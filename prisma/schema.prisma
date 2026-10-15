@@ -9,62 +9,163 @@ datasource db {
 }
 
 model User {
-  id                    String                 @id @default(uuid())
-  email                 String                 @unique
-  name                  String
-  households            HouseholdMember[]
-  virtualAccounts       VirtualAccount[]       
+  id                       String                @id @default(uuid())
+  email                    String                @unique
+  name                     String?
+  referralCode             String                @unique @default(uuid())
+  referredById             String?
+  rolloverBalanceCents     Int                   @default(100000) // $1,000 sign-up bonus (in cents)
+  referredBy               User?                 @relation("UserReferrals", fields: [referredById], references: [id])
+  referrals                User[]                @relation("UserReferrals")
+  households               HouseholdMember[]
+  virtualAccounts          VirtualAccount[]
+  fundingSources           FundingSource[]
+  cardLockouts             CardLockout[]
+  routingRules             RoutingRule[]
+  transactions             Transaction[]
   sharedVisibilitySettings HouseholdVisibility[]
-  security              UserSecurity?
-  createdAt             DateTime               @default(now())
+  security                 UserSecurity?
+  createdAt                DateTime              @default(now())
 }
 
 model Household {
-  id                    String                 @id @default(uuid())
-  name                  String                 
-  members               HouseholdMember[]
-  virtualAccounts       VirtualAccount[]       
-  createdAt             DateTime               @default(now())
+  id              String            @id @default(uuid())
+  name            String
+  members         HouseholdMember[]
+  virtualAccounts VirtualAccount[]
+  invites         HouseholdInvite[]
+  createdAt       DateTime          @default(now())
 }
 
 model HouseholdMember {
-  id                    String                 @id @default(uuid())
-  userId                String
-  householdId           String
-  role                  Role                   
-  user                  User                   @relation(fields: [userId], references: [id])
-  household             Household              @relation(fields: [householdId], references: [id])
+  id          String    @id @default(uuid())
+  userId      String
+  householdId String
+  role        Role
+  user        User      @relation(fields: [userId], references: [id])
+  household   Household @relation(fields: [householdId], references: [id])
+
   @@unique([userId, householdId])
 }
 
 model HouseholdVisibility {
-  id                    String                 @id @default(uuid())
-  userId                String                 
-  householdId           String                 
-  sharePersonalBills    Boolean                @default(false)
-  user                  User                   @relation(fields: [userId], references: [id])
+  id                 String  @id @default(uuid())
+  userId             String
+  householdId        String
+  sharePersonalBills Boolean @default(false)
+  user               User    @relation(fields: [userId], references: [id])
+
   @@unique([userId, householdId])
 }
 
+model HouseholdInvite {
+  id          String    @id @default(uuid())
+  householdId String
+  token       String    @unique @default(uuid())
+  createdBy   String
+  email       String?
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  household Household @relation(fields: [householdId], references: [id])
+}
+
 model VirtualAccount {
-  id                    String                 @id @default(uuid())
-  accountType           AccountType            
-  bsb                   String
-  accountNumber         String                 @unique
-  userId                String?                
-  householdId           String?                
-  user                  User?                  @relation(fields: [userId], references: [id])
-  household             Household?             @relation(fields: [householdId], references: [id])
+  id             String          @id @default(uuid())
+  accountType    AccountType     @default(INDIVIDUAL)
+  bsb            String          @default("802-985")
+  accountNumber  String          @unique
+  userId         String?
+  householdId    String?
+  user           User?           @relation(fields: [userId], references: [id])
+  household      Household?      @relation(fields: [householdId], references: [id])
+  fundingSources FundingSource[]
+  routingRules   RoutingRule[]
+  transactions   Transaction[]
+  createdAt      DateTime        @default(now())
+}
+
+model FundingSource {
+  id               String          @id @default(uuid())
+  userId           String
+  virtualAccountId String?
+  stripePaymentId  String
+  brand            String
+  last4            String
+  nickname         String?
+  bankGroup        String?
+  cardName         String?
+  spendTarget      Int?
+  bonusDeadline    DateTime?
+  isDefault        Boolean         @default(true)
+  isCancelled      Boolean         @default(false)
+  createdAt        DateTime        @default(now())
+
+  user             User            @relation(fields: [userId], references: [id])
+  virtualAccount   VirtualAccount? @relation(fields: [virtualAccountId], references: [id])
+  routingRules     RoutingRule[]
+  transactions     Transaction[]
+}
+
+model CardLockout {
+  id              String    @id @default(uuid())
+  userId          String
+  bankGroup       String
+  cardName        String
+  nickname        String?
+  cancelledAt     DateTime
+  lockoutMonths   Int       @default(18)
+  eligibleAgainAt DateTime
+  notes           String?
+  createdAt       DateTime  @default(now())
+
+  user            User      @relation(fields: [userId], references: [id])
+}
+
+model RoutingRule {
+  id               String          @id @default(uuid())
+  userId           String
+  virtualAccountId String?
+  fundingSourceId  String
+  ruleType         RuleType        @default(DEFAULT)
+  billerName       String?
+  priority         Int             @default(1)
+  isActive         Boolean         @default(true)
+  expiresAt        DateTime?
+  createdAt        DateTime        @default(now())
+
+  user             User            @relation(fields: [userId], references: [id])
+  virtualAccount   VirtualAccount? @relation(fields: [virtualAccountId], references: [id])
+  fundingSource    FundingSource   @relation(fields: [fundingSourceId], references: [id])
+}
+
+model Transaction {
+  id               String            @id @default(uuid())
+  userId           String
+  virtualAccountId String
+  fundingSourceId  String
+  billerName       String
+  amountCents      Int
+  feeWaived        Boolean           @default(true)
+  status           TransactionStatus @default(SUCCESS)
+  stripeChargeId   String?
+  failureReason    String?
+  createdAt        DateTime          @default(now())
+
+  user           User           @relation(fields: [userId], references: [id])
+  virtualAccount VirtualAccount @relation(fields: [virtualAccountId], references: [id])
+  fundingSource  FundingSource  @relation(fields: [fundingSourceId], references: [id])
 }
 
 model UserSecurity {
-  id                    String    @id @default(uuid())
-  userId                String    @unique
-  twoFactorEnabled      Boolean   @default(true)
-  twoFactorSecret       String?   
-  twoFactorType         TwoFactorType @default(TOTP)
-  lastVerifiedAt        DateTime?
-  user                  User      @relation(fields: [userId], references: [id])
+  id               String        @id @default(uuid())
+  userId           String        @unique
+  twoFactorEnabled Boolean       @default(true)
+  twoFactorSecret  String?
+  twoFactorType    TwoFactorType @default(TOTP)
+  lastVerifiedAt   DateTime?
+  user             User          @relation(fields: [userId], references: [id])
 }
 
 enum Role {
@@ -82,4 +183,16 @@ enum TwoFactorType {
   TOTP
   SMS
   EMAIL
+}
+
+enum RuleType {
+  CHURN_TIMER
+  BILLER_OVERRIDE
+  DEFAULT
+}
+
+enum TransactionStatus {
+  SUCCESS
+  DECLINED
+  FAILED
 }
