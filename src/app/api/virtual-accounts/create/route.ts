@@ -28,7 +28,9 @@ export async function POST(req: Request) {
   try {
     const { accountType, portfolioName } = await req.json()
 
-    if (!accountType) {
+    const allowedTypes = ['INDIVIDUAL', 'HOUSEHOLD', 'INVESTMENT'] as const
+    const resolvedType = allowedTypes.find((type) => type === accountType)
+    if (!resolvedType) {
       return NextResponse.json({ error: 'Account type is required' }, { status: 400 })
     }
 
@@ -37,7 +39,7 @@ export async function POST(req: Request) {
 
     // Create Household entity if account type is HOUSEHOLD
     let householdId = null
-    if (accountType === 'HOUSEHOLD') {
+    if (resolvedType === 'HOUSEHOLD') {
       const household = await prisma.household.create({
         data: {
           name: portfolioName || `${user.email?.split('@')[0]}'s Household`,
@@ -59,7 +61,7 @@ export async function POST(req: Request) {
         householdId,
         bsb: '802-985',
         accountNumber,
-        accountType: accountType as 'INDIVIDUAL' | 'HOUSEHOLD' | 'INVESTMENT',
+        accountType: resolvedType,
       },
     })
 

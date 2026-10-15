@@ -12,7 +12,7 @@ model User {
   id                       String                @id @default(uuid())
   email                    String                @unique
   name                     String?
-  referralCode             String                @unique @default(uuid())
+  referralCode             String                @unique
   referredById             String?
   rolloverBalanceCents     Int                   @default(100000)
   referredBy               User?                 @relation("UserReferrals", fields: [referredById], references: [id])
@@ -203,7 +203,9 @@ model PromoRedemption {
   promoCode String
   createdAt DateTime @default(now())
 
-  user      User     @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, promoCode])
 }
 
 model Notification {

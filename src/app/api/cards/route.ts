@@ -68,20 +68,44 @@ export async function PATCH(req: Request) {
   try {
     const { cardId, nickname, bankGroup, cardName, spendTarget, bonusDeadlineDays } = await req.json()
 
-    let bonusDeadline: Date | null = null
+    if (!cardId || typeof cardId !== 'string') {
+      return NextResponse.json({ error: 'cardId is required' }, { status: 400 })
+    }
+
+    const card = await prisma.fundingSource.findFirst({
+      where: { id: cardId, userId: user.id },
+    })
+
+    if (!card) {
+      return NextResponse.json({ error: 'Card not found' }, { status: 404 })
+    }
+
+    const parsedTarget =
+      spendTarget === undefined || spendTarget === null || spendTarget === ''
+        ? null
+        : parseInt(String(spendTarget), 10)
+    if (parsedTarget !== null && !Number.isFinite(parsedTarget)) {
+      return NextResponse.json({ error: 'Invalid spend target' }, { status: 400 })
+    }
+
+    let bonusDeadline: Date | undefined
     if (bonusDeadlineDays) {
+      const days = parseInt(String(bonusDeadlineDays), 10)
+      if (!Number.isFinite(days) || days < 0 || days > 730) {
+        return NextResponse.json({ error: 'Invalid bonus deadline' }, { status: 400 })
+      }
       bonusDeadline = new Date()
-      bonusDeadline.setDate(bonusDeadline.getDate() + parseInt(bonusDeadlineDays, 10))
+      bonusDeadline.setDate(bonusDeadline.getDate() + days)
     }
 
     const updated = await prisma.fundingSource.update({
-      where: { id: cardId },
+      where: { id: card.id },
       data: {
         nickname: nickname || null,
         bankGroup: bankGroup || null,
         cardName: cardName || null,
-        spendTarget: spendTarget ? parseInt(spendTarget, 10) : null,
-        bonusDeadline: bonusDeadline || undefined,
+        spendTarget: parsedTarget,
+        bonusDeadline,
       },
     })
 

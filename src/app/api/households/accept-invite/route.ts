@@ -49,20 +49,24 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'This invite link has expired' }, { status: 400 })
     }
 
-    await prisma.householdMember.upsert({
+    const existingMember = await prisma.householdMember.findUnique({
       where: {
         userId_householdId: {
           userId: user.id,
           householdId: invite.householdId,
         },
       },
-      update: { role: 'PARTNER' },
-      create: {
-        userId: user.id,
-        householdId: invite.householdId,
-role: 'PARTNER',
-      },
     })
+
+    if (!existingMember) {
+      await prisma.householdMember.create({
+        data: {
+          userId: user.id,
+          householdId: invite.householdId,
+          role: 'PARTNER',
+        },
+      })
+    }
 
     await prisma.householdInvite.update({
       where: { id: invite.id },

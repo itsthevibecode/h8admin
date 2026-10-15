@@ -28,12 +28,19 @@ export async function POST(req: Request) {
   try {
     const { householdId, email } = await req.json()
 
-    if (!householdId) {
+    if (!householdId || typeof householdId !== 'string') {
       return NextResponse.json({ error: 'Household ID is required' }, { status: 400 })
     }
 
-    // Auto-heal: Ensure user is registered as OWNER if membership row is missing
-    let member = await prisma.householdMember.findUnique({
+    const household = await prisma.household.findUnique({
+      where: { id: householdId },
+      select: { id: true },
+    })
+    if (!household) {
+      return NextResponse.json({ error: 'Household not found' }, { status: 404 })
+    }
+
+    const member = await prisma.householdMember.findUnique({
       where: {
         userId_householdId: {
           userId: user.id,
@@ -42,14 +49,11 @@ export async function POST(req: Request) {
       },
     })
 
-    if (!member) {
-      member = await prisma.householdMember.create({
-        data: {
-          userId: user.id,
-          householdId,
-          role: 'OWNER',
-        },
-      })
+    if (!member || member.role !== 'OWNER') {
+      return NextResponse.json(
+        { error: 'Only household owners can generate invite links' },
+        { status: 403 }
+      )
     }
 
     const expiresAt = new Date()

@@ -60,12 +60,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    const alreadyRedeemed = await prisma.promoRedemption.findUnique({
+    const alreadyRedeemed = await prisma.promoRedemption.findFirst({
       where: {
-        userId_promoCode: {
-          userId: user.id,
-          promoCode,
-        },
+        userId: user.id,
+        promoCode,
       },
     })
 

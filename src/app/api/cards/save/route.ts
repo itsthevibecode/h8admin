@@ -1,12 +1,8 @@
 import { NextResponse } from 'next/server'
-import Stripe from 'stripe'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { prisma } from '@/lib/prisma'
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-02-24.acacia',
-})
+import { getStripe, retrieveOwnedPaymentMethod } from '@/lib/stripe'
 
 export async function POST(req: Request) {
   const cookieStore = await cookies()
@@ -43,7 +39,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'paymentMethodId is required' }, { status: 400 })
     }
 
-    const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId)
+    const stripe = getStripe()
+    let paymentMethod
+    try {
+      paymentMethod = await retrieveOwnedPaymentMethod(stripe, paymentMethodId, user)
+    } catch (pmErr: unknown) {
+      const err = pmErr as Error & { status?: number }
+      return NextResponse.json(
+        { error: err.message },
+        { status: err.status === 403 ? 403 : 400 }
+      )
+    }
     const brand = paymentMethod.card?.brand || 'Card'
     const last4 = paymentMethod.card?.last4 || '0000'
 
@@ -70,7 +76,10 @@ export async function POST(req: Request) {
       })
     }
 
-    const existingCount = await prisma.fundingSource.count({
+    const activeCount = await prisma.fundingSource.count({
+      where: { userId: user.id, isCancelled: false },
+    })
+    const lifetimeCount = await prisma.fundingSource.count({
       where: { userId: user.id },
     })
 
@@ -84,11 +93,11 @@ export async function POST(req: Request) {
         nickname: body.nickname || null,
         bankGroup: body.bankGroup || null,
         cardName: body.cardName || null,
-        isDefault: existingCount === 0,
+        isDefault: activeCount === 0,
       },
     })
 
-    if (existingCount === 0 && dbUser.referredById) {
+    if (lifetimeCount === 0 && dbUser.referredById) {
       await prisma.user.update({
         where: { id: dbUser.referredById },
         data: { rolloverBalanceCents: { increment: 100000 } },

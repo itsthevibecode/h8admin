@@ -67,21 +67,36 @@ export async function POST(req: Request) {
     const body = await req.json()
     const { ruleType, billerName, fundingSourceId, daysActive, priority } = body
 
-    if (!fundingSourceId) {
+    if (!fundingSourceId || typeof fundingSourceId !== 'string') {
       return NextResponse.json({ error: 'Funding source required' }, { status: 400 })
     }
 
+    const allowedTypes = ['CHURN_TIMER', 'BILLER_OVERRIDE', 'DEFAULT'] as const
+    const resolvedType = allowedTypes.find((type) => type === ruleType) ?? 'BILLER_OVERRIDE'
+
+    const fundingSource = await prisma.fundingSource.findFirst({
+      where: { id: fundingSourceId, userId: user.id, isCancelled: false },
+      select: { id: true },
+    })
+    if (!fundingSource) {
+      return NextResponse.json({ error: 'Funding source not found' }, { status: 404 })
+    }
+
     let expiresAt: Date | null = null
-    if (ruleType === 'CHURN_TIMER' && daysActive) {
+    if (resolvedType === 'CHURN_TIMER' && daysActive) {
+      const days = parseInt(String(daysActive), 10)
+      if (!Number.isFinite(days) || days < 1 || days > 730) {
+        return NextResponse.json({ error: 'Invalid churn timer duration' }, { status: 400 })
+      }
       expiresAt = new Date()
-      expiresAt.setDate(expiresAt.getDate() + parseInt(daysActive, 10))
+      expiresAt.setDate(expiresAt.getDate() + days)
     }
 
     const rule = await prisma.routingRule.create({
       data: {
         userId: user.id,
-        fundingSourceId,
-        ruleType: ruleType || 'BILLER_OVERRIDE',
+        fundingSourceId: fundingSource.id,
+        ruleType: resolvedType,
         billerName: billerName || null,
         priority: priority ? parseInt(priority, 10) : 1,
         expiresAt,
