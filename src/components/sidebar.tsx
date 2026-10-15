@@ -3,15 +3,42 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, CreditCard, ShieldAlert, Gift, Lightbulb, Compass, TrendingDown, CheckCircle2, ChevronRight } from 'lucide-react'
+import { LayoutDashboard, CreditCard, ShieldAlert, Gift, Lightbulb, Compass, TrendingDown, Bell, CheckCircle2, ChevronRight } from 'lucide-react'
 
 export function Sidebar({ email }: { email: string }) {
   const pathname = usePathname() ?? ''
   const [navReady, setNavReady] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
 
   useEffect(() => {
     setNavReady(true)
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadUnread = async () => {
+      try {
+        const res = await fetch('/api/notifications')
+        const data = (await res.json()) as { unreadCount?: number }
+        if (!cancelled && res.ok && typeof data.unreadCount === 'number') {
+          setUnreadCount(data.unreadCount)
+        }
+      } catch {
+        // Badge stays at the last known count if polling fails.
+      }
+    }
+
+    void loadUnread()
+    const interval = window.setInterval(() => {
+      void loadUnread()
+    }, 60_000)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(interval)
+    }
+  }, [pathname])
   const displayEmail = email || ''
   const initials = displayEmail ? displayEmail.slice(0, 2).toUpperCase() : 'H8'
   const localPart = displayEmail.includes('@')
@@ -23,6 +50,11 @@ export function Sidebar({ email }: { email: string }) {
       label: 'Dashboard',
       href: '/',
       icon: LayoutDashboard,
+    },
+    {
+      label: 'Notifications',
+      href: '/notifications',
+      icon: Bell,
     },
     {
       label: 'Credit Cards Hub',
@@ -99,6 +131,11 @@ export function Sidebar({ email }: { email: string }) {
                 <div className="flex items-center gap-2.5">
                   <Icon className="w-4 h-4" />
                   <span>{item.label}</span>
+                  {item.href === '/notifications' && unreadCount > 0 && (
+                    <span className="bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
                 </div>
                 {isActive && <ChevronRight className="w-3.5 h-3.5" />}
               </Link>
