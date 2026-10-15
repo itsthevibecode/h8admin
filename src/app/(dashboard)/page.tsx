@@ -2,6 +2,10 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { prisma } from '@/lib/prisma'
 import { DashboardView } from '@/components/dashboard-view'
+import {
+  allocateUniqueReferralCode,
+  needsShortReferralCode,
+} from '@/lib/referral'
 
 export default async function DashboardPage() {
   const cookieStore = await cookies()
@@ -42,10 +46,10 @@ export default async function DashboardPage() {
 
   if (user) {
     try {
-      const refCode = cookieStore.get('referral_code')?.value
+      const refCode = cookieStore.get('referral_code')?.value?.trim().toUpperCase()
       const existingUser = await prisma.user.findUnique({
         where: { id: user.id },
-        select: { referredById: true },
+        select: { referredById: true, referralCode: true },
       })
 
       let referredById: string | undefined
@@ -58,16 +62,23 @@ export default async function DashboardPage() {
         }
       }
 
+      const shouldAssignReferralCode = needsShortReferralCode(existingUser?.referralCode)
+      const referralCode = shouldAssignReferralCode
+        ? await allocateUniqueReferralCode()
+        : existingUser!.referralCode
+
       await prisma.user.upsert({
         where: { id: user.id },
         update: {
           email: user.email!,
           ...(referredById ? { referredById } : {}),
+          ...(shouldAssignReferralCode ? { referralCode } : {}),
         },
         create: {
           id: user.id,
           email: user.email!,
           name: user.email?.split('@')[0] || 'User',
+          referralCode,
           ...(referredById ? { referredById } : {}),
         },
       })

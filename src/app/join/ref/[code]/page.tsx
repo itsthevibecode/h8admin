@@ -16,7 +16,7 @@ export default function ReferralLandingPage({
     if (referralCode) {
       // Store referral code in cookie for 30 days
       const maxAge = 60 * 60 * 24 * 30
-      document.cookie = `referral_code=${referralCode}; path=/; max-age=${maxAge}; SameSite=Lax`
+      document.cookie = `referral_code=${referralCode.trim().toUpperCase()}; path=/; max-age=${maxAge}; SameSite=Lax`
     }
   }, [referralCode])
 

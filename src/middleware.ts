@@ -30,7 +30,10 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname
   const referralMatch = pathname.match(/^\/join\/ref\/([^/]+)/)
   if (referralMatch?.[1]) {
-    supabaseResponse.cookies.set('referral_code', decodeURIComponent(referralMatch[1]), {
+    supabaseResponse.cookies.set(
+      'referral_code',
+      decodeURIComponent(referralMatch[1]).trim().toUpperCase(),
+      {
       maxAge: 60 * 60 * 24 * 30,
       path: '/',
       sameSite: 'lax',

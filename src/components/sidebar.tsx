@@ -1,11 +1,17 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, CreditCard, ShieldAlert, Gift, CheckCircle2, ChevronRight } from 'lucide-react'
+import { LayoutDashboard, CreditCard, ShieldAlert, Gift, Lightbulb, Compass, TrendingDown, CheckCircle2, ChevronRight } from 'lucide-react'
 
 export function Sidebar({ email }: { email: string }) {
   const pathname = usePathname() ?? ''
+  const [navReady, setNavReady] = useState(false)
+
+  useEffect(() => {
+    setNavReady(true)
+  }, [])
   const displayEmail = email || ''
   const initials = displayEmail ? displayEmail.slice(0, 2).toUpperCase() : 'H8'
   const localPart = displayEmail.includes('@')
@@ -32,6 +38,21 @@ export function Sidebar({ email }: { email: string }) {
       label: 'Referrals & Fee-Free Ledger',
       href: '/referrals',
       icon: Gift,
+    },
+    {
+      label: 'Kill My Admin',
+      href: '/feedback',
+      icon: Lightbulb,
+    },
+    {
+      label: 'How it works',
+      href: '/how-it-works',
+      icon: Compass,
+    },
+    {
+      label: 'Switch & Save',
+      href: '/savings',
+      icon: TrendingDown,
     },
   ]
 
@@ -64,7 +85,7 @@ export function Sidebar({ email }: { email: string }) {
           {navItems.map((item) => {
             const Icon = item.icon
             const pathOnly = item.href.split('#')[0]
-            const isActive = !item.href.includes('#') && pathname === pathOnly
+            const isActive = navReady && !item.href.includes('#') && pathname === pathOnly
             return (
               <Link
                 key={item.href}
