@@ -5,6 +5,7 @@ import { Gift, Copy, Check, Users, ShieldCheck, Sparkles, TrendingUp } from 'luc
 
 export function ReferralHub() {
   const [referralUrl, setReferralUrl] = useState('')
+  const [referralCode, setReferralCode] = useState('')
   const [rolloverBalanceCents, setRolloverBalanceCents] = useState(100000)
   const [referralCount, setReferralCount] = useState(0)
   const [referrals, setReferrals] = useState<{ id: string; email: string; createdAt: string }[]>([])
@@ -17,6 +18,7 @@ export function ReferralHub() {
       const data = await res.json()
       if (res.ok) {
         setReferralUrl(data.referralUrl)
+        setReferralCode(data.referralCode)
         setRolloverBalanceCents(data.rolloverBalanceCents)
         setReferralCount(data.referralCount)
         setReferrals(data.referrals)
@@ -90,7 +92,7 @@ export function ReferralHub() {
           <div>
             <h3 className="text-sm font-bold text-gray-900">Your Unique Referral Link</h3>
             <p className="text-xs text-gray-500">
-              Share this link with friends, family, or points-hacking communities
+              Short code {referralCode || '------'} • Share this link with friends, family, or points-hacking communities
             </p>
           </div>
         </div>
