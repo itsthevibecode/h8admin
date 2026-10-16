@@ -32,12 +32,15 @@ export function PartnerInviteModal({
       if (!res.ok) {
         const text = await res.text()
         try {
-          const parsed = JSON.parse(text)
+          const parsed = JSON.parse(text) as { error?: string }
           throw new Error(parsed.error || `Server error (${res.status})`)
-        } catch {
-          throw new Error(
-            `Route 404: Restart 'npm run dev' to register new API routes in Next.js.`
-          )
+        } catch (parseErr) {
+          if (parseErr instanceof SyntaxError) {
+            throw new Error(
+              `Route 404: Restart 'npm run dev' to register new API routes in Next.js.`
+            )
+          }
+          throw parseErr
         }
       }
 

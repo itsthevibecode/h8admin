@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { prisma } from '@/lib/prisma'
+import { AccountType, Role } from '@prisma/client'
 
 export async function POST(req: Request) {
   const cookieStore = await cookies()
@@ -21,48 +22,102 @@ export async function POST(req: Request) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) {
+  if (!user || !user.email) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   try {
-    const { accountType, portfolioName } = await req.json()
+    const body = await req.json().catch(() => ({}))
+    const { accountType, portfolioName } = body
 
-    const allowedTypes = ['INDIVIDUAL', 'HOUSEHOLD', 'INVESTMENT'] as const
-    const resolvedType = allowedTypes.find((type) => type === accountType)
+    // 1. Strict Enum Validation
+    const validAccountTypes: AccountType[] = [
+      AccountType.INDIVIDUAL,
+      AccountType.HOUSEHOLD,
+      AccountType.INVESTMENT,
+    ]
+
+    const resolvedType = validAccountTypes.find((type) => type === accountType)
     if (!resolvedType) {
-      return NextResponse.json({ error: 'Account type is required' }, { status: 400 })
+      return NextResponse.json(
+        {
+          error:
+            'Invalid account type. Must be INDIVIDUAL, HOUSEHOLD, or INVESTMENT.',
+        },
+        { status: 400 }
+      )
     }
 
-    // Generate unique 8-digit account number
-    const accountNumber = Math.floor(10000000 + Math.random() * 90000000).toString()
+    // 2. Atomic Provisioning Transaction
+    const virtualAccount = await prisma.$transaction(async (tx) => {
+      // Ensure user record exists in PostgreSQL to satisfy foreign key constraints
+      const dbUser = await tx.user.findUnique({
+        where: { id: user.id },
+      })
 
-    // Create Household entity if account type is HOUSEHOLD
-    let householdId = null
-    if (resolvedType === 'HOUSEHOLD') {
-      const household = await prisma.household.create({
-        data: {
-          name: portfolioName || `${user.email?.split('@')[0]}'s Household`,
-          members: {
-            create: {
-              userId: user.id,
-              role: 'OWNER',
+      if (!dbUser) {
+        throw new Error('User profile record not found in database.')
+      }
+
+      // Generate a collision-resistant 8-digit Australian account number
+      let accountNumber = ''
+      let isUnique = false
+      let attempts = 0
+
+      while (!isUnique && attempts < 10) {
+        attempts++
+        accountNumber = Math.floor(
+          10000000 + Math.random() * 90000000
+        ).toString()
+
+        const existing = await tx.virtualAccount.findUnique({
+          where: { accountNumber },
+          select: { id: true },
+        })
+
+        if (!existing) {
+          isUnique = true
+        }
+      }
+
+      if (!isUnique) {
+        throw new Error(
+          'Failed to generate a unique account number. Please try again.'
+        )
+      }
+
+      // Provision Household entity and assign OWNER role if creating a HOUSEHOLD portfolio
+      let householdId: string | null = null
+      if (resolvedType === AccountType.HOUSEHOLD) {
+        const sanitizedName =
+          typeof portfolioName === 'string' && portfolioName.trim()
+            ? portfolioName.trim()
+            : `${user.email.split('@')[0]}'s Household`
+
+        const household = await tx.household.create({
+          data: {
+            name: sanitizedName,
+            members: {
+              create: {
+                userId: user.id,
+                role: Role.OWNER,
+              },
             },
           },
+        })
+        householdId = household.id
+      }
+
+      // Provision the new Virtual Account
+      return tx.virtualAccount.create({
+        data: {
+          userId: user.id,
+          householdId,
+          bsb: '802-985',
+          accountNumber,
+          accountType: resolvedType,
         },
       })
-      householdId = household.id
-    }
-
-    // Provision new Virtual Account
-    const virtualAccount = await prisma.virtualAccount.create({
-      data: {
-        userId: user.id,
-        householdId,
-        bsb: '802-985',
-        accountNumber,
-        accountType: resolvedType,
-      },
     })
 
     return NextResponse.json({ success: true, virtualAccount })

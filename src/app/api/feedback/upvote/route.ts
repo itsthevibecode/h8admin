@@ -15,6 +15,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'suggestionId is required' }, { status: 400 })
     }
 
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { id: true },
+    })
+    if (!dbUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
     const suggestion = await prisma.adminSuggestion.findUnique({
       where: { id: suggestionId },
       select: { id: true },

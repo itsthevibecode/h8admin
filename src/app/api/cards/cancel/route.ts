@@ -46,6 +46,9 @@ export async function POST(req: Request) {
     const lockoutMonths = policy?.lockoutMonths || 12
 
     const cancelledAt = cancelledAtDate ? new Date(cancelledAtDate) : new Date()
+    if (Number.isNaN(cancelledAt.getTime())) {
+      return NextResponse.json({ error: 'Invalid cancellation date' }, { status: 400 })
+    }
     const eligibleAgainAt = new Date(cancelledAt)
     eligibleAgainAt.setMonth(eligibleAgainAt.getMonth() + lockoutMonths)
 
