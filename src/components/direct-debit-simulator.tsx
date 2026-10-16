@@ -15,7 +15,7 @@ export function DirectDebitSimulator() {
       billerName: string
       amountCents: number
       status: string
-      fundingSource: { brand: string; last4: string }
+      fundingSource: { brand: string; last4: string } | null
       failureReason?: string
     }
   } | null>(null)
@@ -133,8 +133,9 @@ export function DirectDebitSimulator() {
               <ArrowRight className="w-3.5 h-3.5 text-gray-400" />
               <span className="flex items-center gap-1 font-semibold text-gray-900">
                 <CreditCard className="w-3.5 h-3.5 text-emerald-600" />
-                {lastResult.transaction.fundingSource.brand} (••
-                {lastResult.transaction.fundingSource.last4})
+                {lastResult.transaction.fundingSource
+                  ? `${lastResult.transaction.fundingSource.brand} (••${lastResult.transaction.fundingSource.last4})`
+                  : 'no linked card'}
               </span>
             </div>
           </div>

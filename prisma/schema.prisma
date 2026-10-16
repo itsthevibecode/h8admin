@@ -148,7 +148,7 @@ model Transaction {
   id               String            @id @default(uuid())
   userId           String
   virtualAccountId String
-  fundingSourceId  String
+  fundingSourceId  String?
   billerName       String
   amountCents      Int
   feeWaived        Boolean           @default(true)
@@ -159,7 +159,7 @@ model Transaction {
 
   user           User           @relation(fields: [userId], references: [id])
   virtualAccount VirtualAccount @relation(fields: [virtualAccountId], references: [id])
-  fundingSource  FundingSource  @relation(fields: [fundingSourceId], references: [id])
+  fundingSource  FundingSource? @relation(fields: [fundingSourceId], references: [id])
 }
 
 model UserSecurity {

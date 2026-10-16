@@ -29,7 +29,7 @@ interface DashboardViewProps {
     amountCents: number
     status: 'SUCCESS' | 'DECLINED' | 'FAILED'
     createdAt: string
-    fundingSource: { brand: string; last4: string }
+    fundingSource: { brand: string; last4: string } | null
   }[]
 }
 

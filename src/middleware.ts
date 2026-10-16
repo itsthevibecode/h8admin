@@ -40,7 +40,10 @@ export async function middleware(request: NextRequest) {
     })
   }
 
-  const isPublicPath = pathname.startsWith('/login') || pathname.startsWith('/join/')
+  const isPublicPath =
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/join/') ||
+    pathname.startsWith('/api/webhooks/')
 
   // Protect routes: Redirect unauthenticated users to /login
   if (!user && !isPublicPath) {

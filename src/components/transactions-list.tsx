@@ -12,7 +12,7 @@ interface Transaction {
   fundingSource: {
     brand: string
     last4: string
-  }
+  } | null
 }
 
 function FormattedTime({ dateString }: { dateString: string }) {
@@ -58,7 +58,9 @@ export function TransactionsList({ transactions }: { transactions: Transaction[]
                   <p className="font-bold text-gray-900">{tx.billerName}</p>
                   <p className="text-[11px] text-gray-500 flex items-center gap-1">
                     Charged to <CreditCard className="w-3 h-3 text-emerald-600 inline" />{' '}
-                    {tx.fundingSource.brand} (••{tx.fundingSource.last4})
+                    {tx.fundingSource
+                      ? `${tx.fundingSource.brand} (••${tx.fundingSource.last4})`
+                      : 'no linked card'}
                   </p>
                 </div>
               </div>
