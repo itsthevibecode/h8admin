@@ -27,14 +27,10 @@ export async function GET() {
   }
 
   try {
-    const since = new Date()
-    since.setFullYear(since.getFullYear() - 1)
-
     const transactions = await prisma.transaction.findMany({
       where: {
         userId: user.id,
         status: 'SUCCESS',
-        createdAt: { gte: since },
       },
       select: {
         billerName: true,
@@ -46,12 +42,7 @@ export async function GET() {
     })
 
     const analysis = analyzeUserSavings(transactions)
-
-    return NextResponse.json({
-      totalAnnualSavingsDollars: analysis.totalAnnualSavingsDollars,
-      detectedCategories: analysis.detectedCategories,
-      opportunities: analysis.opportunities,
-    })
+    return NextResponse.json(analysis)
   } catch (err: unknown) {
     const error = err as Error
     return NextResponse.json({ error: error.message }, { status: 500 })

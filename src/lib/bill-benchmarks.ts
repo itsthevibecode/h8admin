@@ -1,4 +1,4 @@
-export type SavingsCategory = 'ENERGY' | 'BROADBAND' | 'INSURANCE'
+export type SavingsCategory = 'ENERGY' | 'TELCO' | 'INSURANCE'
 
 export interface BillTransaction {
   billerName: string
@@ -6,113 +6,123 @@ export interface BillTransaction {
   createdAt: Date | string
 }
 
-export interface BillBenchmark {
+export interface CategoryBenchmark {
   category: SavingsCategory
   label: string
-  providers: string[]
-  averageMonthlyDollars: number
+  matcher: RegExp
+  medianMonthlyDollars: number
   saverMonthlyDollars: number
-  typicalCycleMonths: number
-  ctaLabel: string
+  planFeatures: string[]
   ctaHref: string
 }
 
 export interface SavingsOpportunity {
   category: SavingsCategory
   label: string
-  providers: string[]
-  matchedBillers: string[]
   detected: boolean
+  matchedBillers: string[]
   currentMonthlyDollars: number
-  averageMarketMonthlyDollars: number
-  benchmarkMonthlyDollars: number
+  medianMonthlyDollars: number
+  saverMonthlyDollars: number
   monthlySavingsDollars: number
   annualSavingsDollars: number
+  planFeatures: string[]
   ctaLabel: string
+  ctaHref: string
+}
+
+export interface BenchmarkBaseline {
+  category: SavingsCategory
+  label: string
+  medianMonthlyDollars: number
+  saverMonthlyDollars: number
+  planFeatures: string[]
   ctaHref: string
 }
 
 export interface SavingsAnalysis {
   totalAnnualSavingsDollars: number
-  detectedCategories: SavingsCategory[]
+  totalMonthlySavingsDollars: number
+  monitoredCategoriesCount: number
+  hasSufficientData: boolean
   opportunities: SavingsOpportunity[]
+  benchmarkBaselines: BenchmarkBaseline[]
 }
 
-export const BILL_BENCHMARKS: BillBenchmark[] = [
+export const BILL_BENCHMARKS: CategoryBenchmark[] = [
   {
     category: 'ENERGY',
     label: 'Energy',
-    providers: ['Synergy', 'AGL', 'Origin', 'EnergyAustralia'],
-    averageMonthlyDollars: 126,
-    saverMonthlyDollars: 95,
-    typicalCycleMonths: 3,
-    ctaLabel: 'Switch & Save',
+    matcher:
+      /\b(synergy|agl|origin|energyaustralia|energy australia|alinta|powershop|red energy)\b/i,
+    medianMonthlyDollars: 165,
+    saverMonthlyDollars: 125,
+    planFeatures: ['No lock-in contract', 'Single-rate metro tariff', 'Solar feed-in friendly'],
     ctaHref: 'https://www.energymadeeasy.gov.au/',
   },
   {
-    category: 'BROADBAND',
-    label: 'Broadband / Telco',
-    providers: ['Telstra', 'Optus', 'TPG', 'Aussie Broadband'],
-    averageMonthlyDollars: 95,
+    category: 'TELCO',
+    label: 'Telco / NBN',
+    matcher:
+      /\b(telstra|optus|tpg|aussie broadband|superloop|vodafone|belong|dodo)\b/i,
+    medianMonthlyDollars: 95,
     saverMonthlyDollars: 70,
-    typicalCycleMonths: 1,
-    ctaLabel: 'View Cheaper Providers',
+    planFeatures: ['Unlimited data', 'NBN 50 / 100 typical', 'No modem lock-in'],
     ctaHref: 'https://www.finder.com.au/broadband-plans',
   },
   {
     category: 'INSURANCE',
     label: 'Insurance',
-    providers: ['AAMI', 'NRMA', 'RAC', 'Bupa', 'Medibank'],
-    averageMonthlyDollars: 180,
-    saverMonthlyDollars: 145,
-    typicalCycleMonths: 1,
-    ctaLabel: 'Compare Rates',
-    ctaHref: 'https://www.finder.com.au/health-insurance',
+    matcher: /\b(aami|nrma|rac|bupa|medibank|allianz|youi|hbf|qbe)\b/i,
+    medianMonthlyDollars: 195,
+    saverMonthlyDollars: 155,
+    planFeatures: ['Comprehensive cover', 'No-claim bonus retained', 'Annual or monthly billing'],
+    ctaHref: 'https://www.finder.com.au/car-insurance',
   },
 ]
 
-function normalizeName(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
-}
-
-function matchesProvider(billerName: string, provider: string) {
-  const biller = ` ${normalizeName(billerName)} `
-  const needle = ` ${normalizeName(provider)} `
-  return biller.includes(needle)
-}
+const QUARTERLY_ENERGY_THRESHOLD_DOLLARS = 250
+const CTA_LABEL = 'Switch & Save via Partner'
 
 function roundDollars(value: number) {
   return Math.round(value * 100) / 100
 }
 
-function estimateMonthlySpend(
+function toMonthlyDollars(amountCents: number, category: SavingsCategory) {
+  const dollars = amountCents / 100
+  if (category === 'ENERGY' && dollars > QUARTERLY_ENERGY_THRESHOLD_DOLLARS) {
+    return dollars / 3
+  }
+  return dollars
+}
+
+function estimateCurrentMonthly(
   transactions: BillTransaction[],
-  typicalCycleMonths: number
+  category: SavingsCategory
 ) {
-  if (transactions.length === 0) return 0
+  const byBiller = new Map<string, number[]>()
+  for (const tx of transactions) {
+    const monthly = toMonthlyDollars(tx.amountCents, category)
+    const existing = byBiller.get(tx.billerName) ?? []
+    existing.push(monthly)
+    byBiller.set(tx.billerName, existing)
+  }
 
-  const totalDollars = transactions.reduce((sum, tx) => sum + tx.amountCents, 0) / 100
-  const times = transactions.map((tx) => new Date(tx.createdAt).getTime())
-  const earliest = Math.min(...times)
-  const latest = Math.max(...times, Date.now())
-  const observedMonths = Math.max(
-    typicalCycleMonths,
-    (latest - earliest) / (1000 * 60 * 60 * 24 * 30.44)
-  )
-
-  return totalDollars / observedMonths
+  let total = 0
+  for (const amounts of byBiller.values()) {
+    const avg = amounts.reduce((sum, value) => sum + value, 0) / amounts.length
+    total += avg
+  }
+  return total
 }
 
 export function analyzeUserSavings(transactions: BillTransaction[]): SavingsAnalysis {
   const opportunities = BILL_BENCHMARKS.map((benchmark) => {
-    const matched = transactions.filter((tx) =>
-      benchmark.providers.some((provider) => matchesProvider(tx.billerName, provider))
-    )
+    const matched = transactions.filter((tx) => benchmark.matcher.test(tx.billerName))
     const detected = matched.length > 0
-    const matchedBillers = [...new Set(matched.map((tx) => tx.billerName))]
     const currentMonthlyDollars = detected
-      ? estimateMonthlySpend(matched, benchmark.typicalCycleMonths)
-      : benchmark.averageMonthlyDollars
+      ? estimateCurrentMonthly(matched, benchmark.category)
+      : benchmark.medianMonthlyDollars
     const monthlySavingsDollars = Math.max(
       0,
       currentMonthlyDollars - benchmark.saverMonthlyDollars
@@ -121,35 +131,40 @@ export function analyzeUserSavings(transactions: BillTransaction[]): SavingsAnal
     return {
       category: benchmark.category,
       label: benchmark.label,
-      providers: benchmark.providers,
-      matchedBillers,
       detected,
+      matchedBillers: [...new Set(matched.map((tx) => tx.billerName))],
       currentMonthlyDollars: roundDollars(currentMonthlyDollars),
-      averageMarketMonthlyDollars: benchmark.averageMonthlyDollars,
-      benchmarkMonthlyDollars: benchmark.saverMonthlyDollars,
+      medianMonthlyDollars: benchmark.medianMonthlyDollars,
+      saverMonthlyDollars: benchmark.saverMonthlyDollars,
       monthlySavingsDollars: roundDollars(monthlySavingsDollars),
       annualSavingsDollars: roundDollars(monthlySavingsDollars * 12),
-      ctaLabel: benchmark.ctaLabel,
+      planFeatures: benchmark.planFeatures,
+      ctaLabel: CTA_LABEL,
       ctaHref: benchmark.ctaHref,
     } satisfies SavingsOpportunity
   })
 
-  const detectedCategories = opportunities
-    .filter((opportunity) => opportunity.detected)
-    .map((opportunity) => opportunity.category)
+  const detected = opportunities.filter((opportunity) => opportunity.detected)
+  const hasSufficientData = detected.length > 0
+  const savingsSource = hasSufficientData ? detected : []
 
-  const savingsSource =
-    detectedCategories.length > 0
-      ? opportunities.filter((opportunity) => opportunity.detected)
-      : opportunities
-
-  const totalAnnualSavingsDollars = roundDollars(
-    savingsSource.reduce((sum, opportunity) => sum + opportunity.annualSavingsDollars, 0)
+  const totalMonthlySavingsDollars = roundDollars(
+    savingsSource.reduce((sum, opportunity) => sum + opportunity.monthlySavingsDollars, 0)
   )
 
   return {
-    totalAnnualSavingsDollars,
-    detectedCategories,
+    totalAnnualSavingsDollars: roundDollars(totalMonthlySavingsDollars * 12),
+    totalMonthlySavingsDollars,
+    monitoredCategoriesCount: detected.length,
+    hasSufficientData,
     opportunities,
+    benchmarkBaselines: BILL_BENCHMARKS.map((benchmark) => ({
+      category: benchmark.category,
+      label: benchmark.label,
+      medianMonthlyDollars: benchmark.medianMonthlyDollars,
+      saverMonthlyDollars: benchmark.saverMonthlyDollars,
+      planFeatures: benchmark.planFeatures,
+      ctaHref: benchmark.ctaHref,
+    })),
   }
 }
