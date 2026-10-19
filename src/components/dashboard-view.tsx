@@ -3,12 +3,13 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { CardSetupModal } from '@/components/card-setup-modal'
-import { RoutingRulesManager } from '@/components/routing-rules-manager'
 import { DirectDebitSimulator } from '@/components/direct-debit-simulator'
 import { TransactionsList } from '@/components/transactions-list'
 import { PortfolioSwitcher } from '@/components/portfolio-switcher'
 import { PointsChurnerTracker } from '@/components/points-churner-tracker'
-import { ShieldCheck, ArrowUpRight, Plus, CreditCard, Landmark, CheckCircle2 } from 'lucide-react'
+import { OnboardingStepper } from '@/components/onboarding-stepper'
+import { useToast } from '@/components/ui/toast'
+import { ShieldCheck, ArrowUpRight, Plus, CreditCard, Landmark, CheckCircle2, Copy } from 'lucide-react'
 
 interface VirtualAccount {
   id: string
@@ -23,6 +24,7 @@ interface DashboardViewProps {
   virtualAccounts: VirtualAccount[]
   fundingSource: { id: string; brand: string; last4: string } | null
   allFundingSources?: { id: string; brand: string; last4: string }[]
+  hasBillerRule?: boolean
   transactions?: {
     id: string
     billerName: string
@@ -38,8 +40,10 @@ export function DashboardView({
   virtualAccounts = [],
   fundingSource,
   allFundingSources = [],
+  hasBillerRule = false,
   transactions = [],
 }: DashboardViewProps) {
+  const { toast } = useToast()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [activeAccountId, setActiveAccountId] = useState(
     virtualAccounts[0]?.id || ''
@@ -64,6 +68,18 @@ export function DashboardView({
       ? [fundingSource]
       : []
 
+  const copyText = async (value: string, message: string) => {
+    try {
+      await navigator.clipboard.writeText(value)
+      toast(message, 'success')
+    } catch {
+      toast('Could not copy to clipboard', 'error')
+    }
+  }
+
+  const bsb = activeAccount?.bsb || '802-985'
+  const accountNumber = activeAccount?.accountNumber || ''
+
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8">
       {/* Header */}
@@ -82,6 +98,12 @@ export function DashboardView({
         </button>
       </div>
 
+      <OnboardingStepper
+        hasCard={availableSources.length > 0}
+        hasBillerRule={hasBillerRule}
+        hasSimulated={transactions.length > 0}
+      />
+
       {/* Portfolio Workspace Tabs */}
       <PortfolioSwitcher
         virtualAccounts={virtualAccounts}
@@ -90,7 +112,10 @@ export function DashboardView({
       />
 
       {/* Main Virtual BSB / Permanent Address Card */}
-      <div className="bg-gradient-to-br from-emerald-900 to-emerald-950 text-white rounded-2xl p-6 shadow-xl relative overflow-hidden">
+      <div
+        id="permanent-address"
+        className="scroll-mt-6 bg-gradient-to-br from-emerald-900 to-emerald-950 text-white rounded-2xl p-6 shadow-xl relative overflow-hidden"
+      >
         <div className="absolute top-0 right-0 p-8 opacity-10">
           <ShieldCheck className="w-48 h-48" />
         </div>
@@ -113,17 +138,32 @@ export function DashboardView({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
             <div>
               <p className="text-xs text-emerald-200/70 uppercase tracking-wider mb-1">BSB Number</p>
-              <p className="text-2xl font-mono font-bold tracking-widest text-white">
-                {activeAccount?.bsb || '802-985'}
-              </p>
+              <button
+                type="button"
+                onClick={() => void copyText(bsb, 'BSB copied to clipboard!')}
+                className="flex items-center gap-2 text-2xl font-mono font-bold tracking-widest text-white hover:text-emerald-100"
+              >
+                {bsb}
+                <Copy className="h-4 w-4 text-emerald-300" />
+              </button>
             </div>
             <div>
               <p className="text-xs text-emerald-200/70 uppercase tracking-wider mb-1">
                 Virtual Account Number ({activeAccount?.accountType || 'INDIVIDUAL'})
               </p>
-              <p className="text-2xl font-mono font-bold tracking-widest text-white">
-                {activeAccount?.accountNumber || 'Pending Setup'}
-              </p>
+              <button
+                type="button"
+                onClick={() =>
+                  void copyText(
+                    `BSB: ${bsb}\nAccount: ${accountNumber}`,
+                    'Account details copied!'
+                  )
+                }
+                className="flex items-center gap-2 text-2xl font-mono font-bold tracking-widest text-white hover:text-emerald-100"
+              >
+                {accountNumber || 'Pending Setup'}
+                <Copy className="h-4 w-4 text-emerald-300" />
+              </button>
             </div>
           </div>
 
@@ -190,9 +230,6 @@ export function DashboardView({
 
       {/* Transactions Feed */}
       <TransactionsList transactions={transactions} />
-
-      {/* IFTTT Routing Rules */}
-      <RoutingRulesManager fundingSources={availableSources} />
 
       <CardSetupModal
         isOpen={isModalOpen}

@@ -15,6 +15,9 @@ model User {
   referralCode             String                @unique
   referredById             String?
   rolloverBalanceCents     Int                   @default(100000)
+  notifyDebits             Boolean               @default(true)
+  notifyBilling            Boolean               @default(true)
+  notifyRewards            Boolean               @default(true)
   referredBy               User?                 @relation("UserReferrals", fields: [referredById], references: [id])
   referrals                User[]                @relation("UserReferrals")
   households               HouseholdMember[]
@@ -24,6 +27,8 @@ model User {
   routingRules             RoutingRule[]
   transactions             Transaction[]
   sharedVisibilitySettings HouseholdVisibility[]
+  propertyMemberships      PropertyMember[]
+  propertyVisibility       PropertyVisibility[]
   security                 UserSecurity?
   adminSuggestions         AdminSuggestion[]
   suggestionUpvotes        SuggestionUpvote[]
@@ -75,6 +80,40 @@ model HouseholdInvite {
   household Household @relation(fields: [householdId], references: [id])
 }
 
+model PropertyMember {
+  id               String         @id @default(uuid())
+  virtualAccountId String
+  userId           String
+  role             Role           @default(PARTNER)
+  createdAt        DateTime       @default(now())
+  virtualAccount   VirtualAccount @relation(fields: [virtualAccountId], references: [id])
+  user             User           @relation(fields: [userId], references: [id])
+
+  @@unique([virtualAccountId, userId])
+}
+
+model PropertyInvite {
+  id               String         @id @default(uuid())
+  virtualAccountId String
+  token            String         @unique @default(uuid())
+  createdBy        String
+  expiresAt        DateTime
+  usedAt           DateTime?
+  createdAt        DateTime       @default(now())
+  virtualAccount   VirtualAccount @relation(fields: [virtualAccountId], references: [id])
+}
+
+model PropertyVisibility {
+  id               String         @id @default(uuid())
+  userId           String
+  virtualAccountId String
+  shareBills       Boolean        @default(false)
+  user             User           @relation(fields: [userId], references: [id])
+  virtualAccount   VirtualAccount @relation(fields: [virtualAccountId], references: [id])
+
+  @@unique([userId, virtualAccountId])
+}
+
 model VirtualAccount {
   id             String          @id @default(uuid())
   accountType    AccountType     @default(INDIVIDUAL)
@@ -84,10 +123,13 @@ model VirtualAccount {
   householdId    String?
   user           User?           @relation(fields: [userId], references: [id])
   household      Household?      @relation(fields: [householdId], references: [id])
-  fundingSources FundingSource[]
-  routingRules   RoutingRule[]
-  transactions   Transaction[]
-  createdAt      DateTime        @default(now())
+  fundingSources     FundingSource[]
+  routingRules       RoutingRule[]
+  transactions       Transaction[]
+  propertyMembers    PropertyMember[]
+  propertyInvites    PropertyInvite[]
+  propertyVisibility PropertyVisibility[]
+  createdAt          DateTime            @default(now())
 }
 
 model FundingSource {

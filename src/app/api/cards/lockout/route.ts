@@ -74,7 +74,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { bankGroup, cardName, cancelledAtDate, notes } = await req.json()
+    const { bankGroup, cardName, cancelledAtDate, notes, nickname } = await req.json()
 
     if (!bankGroup || !cardName) {
       return NextResponse.json(
@@ -97,6 +97,7 @@ export async function POST(req: Request) {
         userId: user.id,
         bankGroup,
         cardName,
+        nickname: typeof nickname === 'string' && nickname.trim() ? nickname.trim() : null,
         cancelledAt,
         lockoutMonths,
         eligibleAgainAt,

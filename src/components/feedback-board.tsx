@@ -1,16 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import {
-  Lightbulb,
-  ChevronUp,
-  Plus,
-  X,
-  Loader2,
-  CheckCircle2,
-  Search,
-  Sparkles,
-} from 'lucide-react'
+import { ChevronUp, Plus, X, Loader2, CheckCircle2, Search } from 'lucide-react'
 
 type SuggestionCategory =
   | 'BILLING'
@@ -155,26 +146,6 @@ export function FeedbackBoard() {
           {isAdding ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
           {isAdding ? 'Close' : 'New Suggestion'}
         </button>
-      </div>
-
-      <div className="bg-gradient-to-br from-slate-900 to-emerald-950 text-white rounded-2xl p-6 shadow-xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 p-8 opacity-10">
-          <Lightbulb className="w-48 h-48" />
-        </div>
-        <div className="relative z-10 flex items-start gap-3">
-          <div className="p-2.5 bg-white/10 rounded-xl">
-            <Sparkles className="w-5 h-5 text-emerald-300" />
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs uppercase tracking-wider text-emerald-300 font-semibold">
-              Suggestion & Upvoting Board
-            </p>
-            <p className="text-sm text-emerald-50 max-w-2xl">
-              Want autopilot to refinance, cancel a subscription, or chase a points bonus? Post it.
-              Highest-voted ideas move into feasibility and then onto the roadmap.
-            </p>
-          </div>
-        </div>
       </div>
 
       {isAdding && (
