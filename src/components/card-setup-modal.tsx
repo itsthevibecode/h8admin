@@ -9,6 +9,7 @@ import {
   useElements,
 } from '@stripe/react-stripe-js'
 import { X, CreditCard, Lock, AlertCircle } from 'lucide-react'
+import { LegalConsentCheckbox } from '@/components/legal-consent-modal'
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
@@ -19,10 +20,11 @@ function SetupForm({ onSuccess, onClose }: { onSuccess: () => void; onClose: () 
   const elements = useElements()
   const [errorMsg, setErrorMsg] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [agreed, setAgreed] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!stripe || !elements) return
+    if (!stripe || !elements || !agreed) return
 
     setSubmitting(true)
     setErrorMsg('')
@@ -64,6 +66,7 @@ function SetupForm({ onSuccess, onClose }: { onSuccess: () => void; onClose: () 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <PaymentElement />
+      <LegalConsentCheckbox agreed={agreed} onChange={setAgreed} />
       {errorMsg && (
         <div className="p-3 text-xs text-red-600 bg-red-50 rounded-md border border-red-200">
           {errorMsg}
@@ -79,7 +82,7 @@ function SetupForm({ onSuccess, onClose }: { onSuccess: () => void; onClose: () 
         </button>
         <button
           type="submit"
-          disabled={!stripe || submitting}
+          disabled={!stripe || submitting || !agreed}
           className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm rounded-lg transition disabled:opacity-50"
         >
           {submitting ? 'Tokenizing...' : 'Link Funding Source'}
