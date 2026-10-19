@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, CreditCard, ShieldAlert, Gift, Lightbulb, Compass, TrendingDown, Bell, CheckCircle2, ChevronRight, Users } from 'lucide-react'
+import { LayoutDashboard, CreditCard, ShieldAlert, Gift, Lightbulb, Compass, TrendingDown, Bell, CheckCircle2, ChevronRight, Users, Receipt } from 'lucide-react'
 
 export function Sidebar({ email }: { email: string }) {
   const pathname = usePathname() ?? ''
@@ -90,6 +90,11 @@ export function Sidebar({ email }: { email: string }) {
       label: 'Joint Household',
       href: '/household',
       icon: Users,
+    },
+    {
+      label: 'Billing & Plans',
+      href: '/billing',
+      icon: Receipt,
     },
   ]
 
