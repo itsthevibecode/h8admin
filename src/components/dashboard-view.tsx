@@ -6,7 +6,7 @@ import { CardSetupModal } from '@/components/card-setup-modal'
 import { RoutingRulesManager } from '@/components/routing-rules-manager'
 import { DirectDebitSimulator } from '@/components/direct-debit-simulator'
 import { TransactionsList } from '@/components/transactions-list'
-import { PortfolioTabs } from '@/components/portfolio-tabs'
+import { PortfolioSwitcher } from '@/components/portfolio-switcher'
 import { PointsChurnerTracker } from '@/components/points-churner-tracker'
 import { ShieldCheck, ArrowUpRight, Plus, CreditCard, Landmark, CheckCircle2 } from 'lucide-react'
 
@@ -83,13 +83,11 @@ export function DashboardView({
       </div>
 
       {/* Portfolio Workspace Tabs */}
-      {virtualAccounts.length > 0 && (
-        <PortfolioTabs
-          virtualAccounts={virtualAccounts}
-          activeAccountId={activeAccountId}
-          onSelectAccount={(id) => setActiveAccountId(id)}
-        />
-      )}
+      <PortfolioSwitcher
+        virtualAccounts={virtualAccounts}
+        activeAccountId={activeAccountId}
+        onSelectAccount={(id) => setActiveAccountId(id)}
+      />
 
       {/* Main Virtual BSB / Permanent Address Card */}
       <div className="bg-gradient-to-br from-emerald-900 to-emerald-950 text-white rounded-2xl p-6 shadow-xl relative overflow-hidden">

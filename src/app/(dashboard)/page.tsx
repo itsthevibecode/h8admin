@@ -83,11 +83,39 @@ export default async function DashboardPage() {
         },
       })
 
-      virtualAccounts = await prisma.virtualAccount.findMany({
+      const ownedAccounts = await prisma.virtualAccount.findMany({
         where: { userId: user.id },
         select: { id: true, bsb: true, accountNumber: true, accountType: true, householdId: true },
         orderBy: { createdAt: 'asc' },
       })
+
+      const memberships = await prisma.householdMember.findMany({
+        where: { userId: user.id },
+        select: {
+          household: {
+            select: {
+              virtualAccounts: {
+                select: {
+                  id: true,
+                  bsb: true,
+                  accountNumber: true,
+                  accountType: true,
+                  householdId: true,
+                },
+              },
+            },
+          },
+        },
+      })
+
+      const householdAccounts = memberships.flatMap(
+        (membership) => membership.household.virtualAccounts
+      )
+      const byId = new Map(ownedAccounts.map((account) => [account.id, account]))
+      for (const account of householdAccounts) {
+        byId.set(account.id, account)
+      }
+      virtualAccounts = Array.from(byId.values())
 
       if (virtualAccounts.length === 0) {
         const primary = await prisma.virtualAccount.create({

@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
+import { getSafeCallbackUrl } from '@/lib/auth-redirect'
 
 export function AuthFlow() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signup')
@@ -12,6 +13,8 @@ export function AuthFlow() {
   const [loading, setLoading] = useState(false)
   
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const callbackUrl = getSafeCallbackUrl(searchParams.get('callbackUrl'))
   const supabase = createClient()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -28,7 +31,7 @@ export function AuthFlow() {
       if (error) {
         setErrorMsg(error.message)
       } else if (data.user) {
-        router.push('/')
+        router.push(callbackUrl)
         router.refresh()
       }
     } else {
@@ -40,7 +43,7 @@ export function AuthFlow() {
       if (error) {
         setErrorMsg(error.message)
       } else if (data.user) {
-        router.push('/')
+        router.push(callbackUrl)
         router.refresh()
       }
     }
