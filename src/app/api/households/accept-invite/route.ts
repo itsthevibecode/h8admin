@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { Role } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
+import {
+  allocateUniqueReferralCode,
+  needsShortReferralCode,
+} from '@/lib/referral'
 
 export async function POST(req: Request) {
   const cookieStore = await cookies()
@@ -28,7 +33,7 @@ export async function POST(req: Request) {
   try {
     const { token } = await req.json()
 
-    if (!token) {
+    if (!token || typeof token !== 'string') {
       return NextResponse.json({ error: 'Invite token is required' }, { status: 400 })
     }
 
@@ -49,6 +54,27 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'This invite link has expired' }, { status: 400 })
     }
 
+    const existingUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { id: true, referralCode: true },
+    })
+    const referralCode = needsShortReferralCode(existingUser?.referralCode)
+      ? await allocateUniqueReferralCode()
+      : existingUser!.referralCode
+
+    await prisma.user.upsert({
+      where: { id: user.id },
+      update: {
+        ...(user.email ? { email: user.email } : {}),
+      },
+      create: {
+        id: user.id,
+        email: user.email || `${user.id}@h8admin.local`,
+        name: user.email?.split('@')[0] || 'Partner',
+        referralCode,
+      },
+    })
+
     const existingMember = await prisma.householdMember.findUnique({
       where: {
         userId_householdId: {
@@ -58,23 +84,38 @@ export async function POST(req: Request) {
       },
     })
 
-    if (!existingMember) {
-      await prisma.householdMember.create({
-        data: {
-          userId: user.id,
-          householdId: invite.householdId,
-          role: 'PARTNER',
-        },
+    if (existingMember) {
+      return NextResponse.json({
+        success: true,
+        householdId: invite.householdId,
+        householdName: invite.household.name,
       })
     }
 
-    await prisma.householdInvite.update({
-      where: { id: invite.id },
-      data: { usedAt: new Date() },
-    })
+    await prisma.$transaction([
+      prisma.householdMember.create({
+        data: {
+          userId: user.id,
+          householdId: invite.householdId,
+          role: Role.PARTNER,
+        },
+      }),
+      prisma.householdVisibility.create({
+        data: {
+          userId: user.id,
+          householdId: invite.householdId,
+          sharePersonalBills: false,
+        },
+      }),
+      prisma.householdInvite.update({
+        where: { id: invite.id },
+        data: { usedAt: new Date() },
+      }),
+    ])
 
     return NextResponse.json({
       success: true,
+      householdId: invite.householdId,
       householdName: invite.household.name,
     })
   } catch (err: unknown) {

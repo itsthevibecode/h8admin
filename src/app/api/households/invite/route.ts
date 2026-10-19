@@ -1,6 +1,8 @@
+import { randomBytes } from 'crypto'
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { Role } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 
 export async function POST(req: Request) {
@@ -32,14 +34,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Household ID is required' }, { status: 400 })
     }
 
-    const household = await prisma.household.findUnique({
-      where: { id: householdId },
-      select: { id: true },
-    })
-    if (!household) {
-      return NextResponse.json({ error: 'Household not found' }, { status: 404 })
-    }
-
     const member = await prisma.householdMember.findUnique({
       where: {
         userId_householdId: {
@@ -49,7 +43,7 @@ export async function POST(req: Request) {
       },
     })
 
-    if (!member || member.role !== 'OWNER') {
+    if (!member || member.role !== Role.OWNER) {
       return NextResponse.json(
         { error: 'Only household owners can generate invite links' },
         { status: 403 }
@@ -63,15 +57,19 @@ export async function POST(req: Request) {
       data: {
         householdId,
         createdBy: user.id,
-        email: email || null,
+        email: typeof email === 'string' && email.trim() ? email.trim() : null,
+        token: randomBytes(24).toString('hex'),
         expiresAt,
       },
     })
 
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+    const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').replace(
+      /\/$/,
+      ''
+    )
     const inviteUrl = `${baseUrl}/join/household/${invite.token}`
 
-    return NextResponse.json({ success: true, inviteUrl, token: invite.token })
+    return NextResponse.json({ success: true, invite, inviteUrl })
   } catch (err: unknown) {
     const error = err as Error
     console.error('Invite generation error:', error.message)

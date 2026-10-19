@@ -89,23 +89,48 @@ export async function POST(req: Request) {
       // Provision Household entity and assign OWNER role if creating a HOUSEHOLD portfolio
       let householdId: string | null = null
       if (resolvedType === AccountType.HOUSEHOLD) {
-        const sanitizedName =
-          typeof portfolioName === 'string' && portfolioName.trim()
-            ? portfolioName.trim()
-            : `${user.email.split('@')[0]}'s Household`
+        const existingMembership = await tx.householdMember.findFirst({
+          where: { userId: user.id },
+        })
 
-        const household = await tx.household.create({
-          data: {
-            name: sanitizedName,
-            members: {
-              create: {
-                userId: user.id,
-                role: Role.OWNER,
+        if (existingMembership) {
+          householdId = existingMembership.householdId
+          const existingHouseholdAccount = await tx.virtualAccount.findFirst({
+            where: {
+              householdId,
+              accountType: AccountType.HOUSEHOLD,
+            },
+          })
+          if (existingHouseholdAccount) {
+            return existingHouseholdAccount
+          }
+        } else {
+          const sanitizedName =
+            typeof portfolioName === 'string' && portfolioName.trim()
+              ? portfolioName.trim()
+              : `${user.email.split('@')[0]}'s Household`
+
+          const household = await tx.household.create({
+            data: {
+              name: sanitizedName,
+              members: {
+                create: {
+                  userId: user.id,
+                  role: Role.OWNER,
+                },
               },
             },
-          },
-        })
-        householdId = household.id
+          })
+          householdId = household.id
+
+          await tx.householdVisibility.create({
+            data: {
+              userId: user.id,
+              householdId,
+              sharePersonalBills: false,
+            },
+          })
+        }
       }
 
       // Provision the new Virtual Account
