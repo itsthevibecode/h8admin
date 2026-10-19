@@ -2,6 +2,8 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { Sidebar } from '@/components/sidebar'
+import { MobileNav } from '@/components/mobile-nav'
+import { ToastProvider } from '@/components/ui/toast'
 
 export default async function DashboardLayout({
   children,
@@ -40,9 +42,14 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50/50">
-      <Sidebar email={user?.email || ''} />
-      <main className="flex-1 min-h-screen overflow-y-auto">{children}</main>
-    </div>
+    <ToastProvider>
+      <div className="flex min-h-screen bg-gray-50/50">
+        <div className="hidden md:block">
+          <Sidebar email={user?.email || ''} />
+        </div>
+        <main className="flex-1 min-h-screen overflow-y-auto pb-16 md:pb-0">{children}</main>
+        <MobileNav />
+      </div>
+    </ToastProvider>
   )
 }
