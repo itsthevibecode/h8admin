@@ -23,6 +23,9 @@ interface BillingMetrics {
   overageVolumeCents: number
   overageFeeCents: number
   estimatedTotalMonthlyFeeCents: number
+  feePlan: 'retail' | 'beta-cost' | 'beta-free'
+  nonBetaCount: number
+  betaGraduationTarget: number
   cycleStartDate: string
   cycleEndDate: string
 }
@@ -152,25 +155,33 @@ export function BillingHub() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm space-y-3">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-            Monthly Volume Cap
+            {metrics?.feePlan === 'retail' ? 'Monthly Volume Cap' : 'Monthly routed volume'}
           </p>
           <p className="text-2xl font-bold text-gray-900">
             {formatAudCents(volume)}
-            <span className="text-sm font-medium text-gray-400">
-              {' '}
-              / {formatAudCents(cap)}
-            </span>
+            {metrics?.feePlan === 'retail' && (
+              <span className="text-sm font-medium text-gray-400">
+                {' '}
+                / {formatAudCents(cap)}
+              </span>
+            )}
           </p>
-          <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
-            <div
-              className={`h-full rounded-full ${overCap ? 'bg-amber-500' : 'bg-emerald-600'}`}
-              style={{ width: `${progressPct}%` }}
-            />
-          </div>
+          {metrics?.feePlan === 'retail' && (
+            <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+              <div
+                className={`h-full rounded-full ${overCap ? 'bg-amber-500' : 'bg-emerald-600'}`}
+                style={{ width: `${progressPct}%` }}
+              />
+            </div>
+          )}
           <p className="text-[11px] text-gray-500">
-            {overCap
-              ? `${formatAudCents(metrics?.overageVolumeCents ?? 0)} above the included $3,000 routing cap.`
-              : `${formatAudCents(Math.max(0, cap - volume))} remaining inside this month's included volume.`}
+            {metrics?.feePlan === 'beta-free'
+              ? 'This beta account routes at no charge.'
+              : metrics?.feePlan === 'beta-cost'
+                ? 'Cost price is 0.30% of this volume, with no base fee.'
+                : overCap
+                  ? `${formatAudCents(metrics?.overageVolumeCents ?? 0)} above the included $3,000 routing cap.`
+                  : `${formatAudCents(Math.max(0, cap - volume))} remaining inside this month's included volume.`}
           </p>
         </div>
 
@@ -187,8 +198,9 @@ export function BillingHub() {
             {formatAudCents(metrics?.rolloverBalanceCents ?? 0)}
           </p>
           <p className="text-[11px] text-emerald-200/80">
-            Stacked fee-free referral volume. While this ledger is positive, 0.5% overage on
-            routing above $3,000 is fully offset.
+            {metrics?.feePlan === 'retail'
+              ? 'Stacked fee-free referral volume. While this ledger is positive, 0.5% overage on routing above $3,000 is fully offset.'
+              : 'Held for when this account moves to the standard plan. Beta routing does not draw this ledger down.'}
           </p>
         </div>
 
@@ -201,13 +213,25 @@ export function BillingHub() {
           </p>
           <ul className="text-[11px] text-gray-600 space-y-1">
             <li className="flex justify-between">
-              <span>Base tier ($1/tx up to $5)</span>
+              <span>
+                {metrics?.feePlan === 'beta-free'
+                  ? 'Beta routing (free)'
+                  : metrics?.feePlan === 'beta-cost'
+                    ? 'Beta base fee'
+                    : 'Base tier ($1/tx up to $5)'}
+              </span>
               <span className="font-semibold text-gray-900">
                 {formatAudCents(metrics?.baseFeeCents ?? 0)}
               </span>
             </li>
             <li className="flex justify-between">
-              <span>0.5% overage</span>
+              <span>
+                {metrics?.feePlan === 'beta-cost'
+                  ? '0.30% of routed volume'
+                  : metrics?.feePlan === 'beta-free'
+                    ? 'Routing fee'
+                    : '0.5% overage'}
+              </span>
               <span className="font-semibold text-gray-900">
                 {formatAudCents(metrics?.overageFeeCents ?? 0)}
               </span>
@@ -225,10 +249,11 @@ export function BillingHub() {
         <div className="text-sm text-emerald-950 space-y-1">
           <p className="font-bold">How H8Admin bills routing</p>
           <p className="text-xs text-emerald-900/80">
-            The platform fee is $1 per successful direct debit, capped at $5/month, covering up
-            to $3,000 of routed volume. Volume above $3,000 attracts 0.5% overage unless your
-            rollover ledger (referrals and promo credits) still has fee-free balance — that
-            offset never expires.
+            {metrics?.feePlan === 'beta-free'
+              ? 'This beta account routes at no charge. That rate stays in place even if the non-beta count later drops.'
+              : metrics?.feePlan === 'beta-cost'
+                ? `Private-beta accounts pay cost price: 0.30% of successful routing and no base fee. When ${metrics.betaGraduationTarget} non-beta accounts exist (${metrics.nonBetaCount} so far), beta routing becomes free and stays free.`
+                : 'The platform fee is $1 per successful direct debit, capped at $5/month, covering up to $3,000 of routed volume. Volume above $3,000 attracts 0.5% overage unless your rollover ledger still has fee-free balance.'}
           </p>
         </div>
       </div>

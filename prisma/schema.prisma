@@ -11,6 +11,8 @@ datasource db {
 model User {
   id                       String                @id @default(uuid())
   email                    String                @unique
+  firstName                String?
+  lastName                 String?
   name                     String?
   referralCode             String                @unique
   referredById             String?
@@ -18,6 +20,8 @@ model User {
   notifyDebits             Boolean               @default(true)
   notifyBilling            Boolean               @default(true)
   notifyRewards            Boolean               @default(true)
+  isAdmin                  Boolean               @default(false)
+  isBetaTester             Boolean               @default(true)
   referredBy               User?                 @relation("UserReferrals", fields: [referredById], references: [id])
   referrals                User[]                @relation("UserReferrals")
   households               HouseholdMember[]
@@ -35,6 +39,18 @@ model User {
   notifications            Notification[]
   promoRedemptions         PromoRedemption[]
   createdAt                DateTime              @default(now())
+}
+
+model BetaAllowlist {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  notes     String?
+  createdAt DateTime @default(now())
+}
+
+model PlatformState {
+  id                 String    @id
+  betaFreeUnlockedAt DateTime?
 }
 
 model Household {

@@ -4,7 +4,7 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
-const CLIENT_REVISION = 'property-partners-v1'
+const CLIENT_REVISION = 'closed-beta-v1'
 const revisionStore = globalThis as unknown as { __h8PrismaRevision?: string }
 const existing = globalForPrisma.prisma
 const clientIsStale =

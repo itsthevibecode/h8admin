@@ -20,6 +20,7 @@ import {
   Users,
   Building2,
   BarChart3,
+  Shield,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -88,7 +89,15 @@ function isItemActive(
   return pathname === pathOnly
 }
 
-export function Sidebar({ email }: { email: string }) {
+export function Sidebar({
+  email,
+  displayName = '',
+  isAdmin = false,
+}: {
+  email: string
+  displayName?: string
+  isAdmin?: boolean
+}) {
   const pathname = usePathname() ?? ''
   const [navReady, setNavReady] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
@@ -124,7 +133,14 @@ export function Sidebar({ email }: { email: string }) {
   }, [pathname])
 
   const displayEmail = email || ''
-  const initials = displayEmail ? displayEmail.slice(0, 2).toUpperCase() : 'H8'
+  const fullName = displayName.trim()
+  const nameParts = fullName.split(/\s+/).filter(Boolean)
+  const initials =
+    nameParts.length >= 2
+      ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`.toUpperCase()
+      : displayEmail
+        ? displayEmail.slice(0, 2).toUpperCase()
+        : 'H8'
   const localPart = displayEmail.includes('@')
     ? displayEmail.split('@')[0]
     : displayEmail || 'Account'
@@ -151,7 +167,7 @@ export function Sidebar({ email }: { email: string }) {
               {initials}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-bold text-gray-900">{localPart}</p>
+              <p className="truncate text-xs font-bold text-gray-900">{fullName || localPart}</p>
               <p className="truncate text-[10px] text-gray-400">{displayEmail || 'Signed in'}</p>
             </div>
           </Link>
@@ -193,6 +209,12 @@ export function Sidebar({ email }: { email: string }) {
               item={suggestionItem}
               active={isItemActive(pathname, suggestionItem.href, navReady)}
             />
+            {isAdmin && (
+              <NavLink
+                item={{ label: 'Admin', href: '/admin', icon: Shield }}
+                active={isItemActive(pathname, '/admin', navReady, true)}
+              />
+            )}
           </div>
         </nav>
       </div>

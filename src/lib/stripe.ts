@@ -1,4 +1,6 @@
 import Stripe from 'stripe'
+import { prisma } from '@/lib/prisma'
+import { legalName } from '@/lib/legal-name'
 
 export function getStripe() {
   const stripeKey = process.env.STRIPE_SECRET_KEY
@@ -12,21 +14,39 @@ export async function getOrCreateStripeCustomer(
   stripe: Stripe,
   user: { id: string; email?: string | null }
 ) {
+  const record = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { firstName: true, lastName: true },
+  })
+  const name = record ? legalName(record) : undefined
   const existingCustomers = await stripe.customers.list({
     email: user.email || undefined,
     limit: 1,
   })
 
-  if (existingCustomers.data[0]?.id) {
-    return existingCustomers.data[0].id
+  const existing = existingCustomers.data[0]
+  if (existing?.id) {
+    if (name && existing.name !== name) {
+      await stripe.customers.update(existing.id, { name })
+    }
+    return existing.id
   }
 
   const created = await stripe.customers.create({
     email: user.email || undefined,
+    name,
     metadata: { userId: user.id },
   })
 
   return created.id
+}
+
+export async function syncStripeCustomerName(email: string, name: string) {
+  const stripe = getStripe()
+  const existing = await stripe.customers.list({ email, limit: 1 })
+  const customer = existing.data[0]
+  if (!customer || customer.name === name) return
+  await stripe.customers.update(customer.id, { name })
 }
 
 export async function retrieveOwnedPaymentMethod(

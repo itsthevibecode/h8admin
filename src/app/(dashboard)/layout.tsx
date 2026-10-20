@@ -1,9 +1,10 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { Sidebar } from '@/components/sidebar'
-import { MobileNav } from '@/components/mobile-nav'
-import { ToastProvider } from '@/components/ui/toast'
+import { DashboardFrame } from '@/components/dashboard-frame'
+import { prisma } from '@/lib/prisma'
+import { legalName } from '@/lib/legal-name'
+import { hasVerifiedFactor } from '@/lib/session-mfa'
 
 export default async function DashboardLayout({
   children,
@@ -41,15 +42,26 @@ export default async function DashboardLayout({
     redirect('/login')
   }
 
+  if (!hasVerifiedFactor(user)) {
+    redirect('/login/enroll')
+  }
+  const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+  if (assurance?.currentLevel !== 'aal2') {
+    redirect('/login/verify')
+  }
+
+  const profile = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { firstName: true, lastName: true, isAdmin: true },
+  })
+
   return (
-    <ToastProvider>
-      <div className="flex min-h-screen bg-gray-50/50">
-        <div className="hidden md:block">
-          <Sidebar email={user?.email || ''} />
-        </div>
-        <main className="flex-1 min-h-screen overflow-y-auto pb-16 md:pb-0">{children}</main>
-        <MobileNav />
-      </div>
-    </ToastProvider>
+    <DashboardFrame
+      email={user.email || ''}
+      displayName={profile ? legalName(profile) ?? '' : ''}
+      isAdmin={profile?.isAdmin ?? false}
+    >
+      {children}
+    </DashboardFrame>
   )
 }
