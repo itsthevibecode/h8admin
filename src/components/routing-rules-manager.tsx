@@ -1,263 +1,243 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Sliders, Plus, Clock, Zap, Shield, CheckCircle2, Info, ArrowRight } from 'lucide-react'
+import { FormEvent, useEffect, useState } from 'react'
+import { ArrowRight, Trash2 } from 'lucide-react'
+import { useToast } from '@/components/ui/toast'
 
-interface FundingSource {
+export interface OverrideFundingSource {
   id: string
   brand: string
   last4: string
-  isDefault?: boolean
+  nickname?: string | null
 }
 
 interface RoutingRule {
   id: string
-  ruleType: 'CHURN_TIMER' | 'BILLER_OVERRIDE' | 'DEFAULT'
   billerName: string | null
-  expiresAt: string | null
-  priority: number
-  fundingSource: FundingSource
+  isActive: boolean
+  fundingSource: OverrideFundingSource
 }
 
-export function RoutingRulesManager({ fundingSources }: { fundingSources: FundingSource[] }) {
+function cardLabel(source: OverrideFundingSource) {
+  const nickname = source.nickname?.trim()
+  return nickname || `${source.brand} ••${source.last4}`
+}
+
+function cleanBillerName(value: string) {
+  return value
+    .replace(/[^\p{L}\p{N}&'’.\- ]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 80)
+}
+
+export function RoutingRulesManager({
+  fundingSources,
+}: {
+  fundingSources: OverrideFundingSource[]
+}) {
+  const { toast } = useToast()
   const [rules, setRules] = useState<RoutingRule[]>([])
   const [loading, setLoading] = useState(true)
-  const [isAdding, setIsAdding] = useState(false)
-
-  // Form State
-  const [ruleType, setRuleType] = useState<'BILLER_OVERRIDE' | 'CHURN_TIMER'>('BILLER_OVERRIDE')
   const [billerName, setBillerName] = useState('')
   const [fundingSourceId, setFundingSourceId] = useState(fundingSources[0]?.id || '')
-  const [daysActive, setDaysActive] = useState('90')
-  const [submitting, setSubmitting] = useState(false)
-
-  const defaultSource = fundingSources[0]
-
-  const fetchRules = async () => {
-    try {
-      const res = await fetch('/api/rules')
-      const data = await res.json()
-      if (res.ok) {
-        setRules(data.rules)
-      }
-    } catch (err) {
-      console.error('Failed to fetch rules:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    fetchRules()
-  }, [])
+    let cancelled = false
+    void (async () => {
+      try {
+        const res = await fetch('/api/rules')
+        const data = (await res.json()) as { rules?: RoutingRule[] }
+        if (!cancelled && res.ok) setRules(data.rules ?? [])
+      } catch {
+        if (!cancelled) toast('Could not load biller overrides', 'error')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [toast])
 
-  const handleCreateRule = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!fundingSourceId) return
-
-    setSubmitting(true)
+  const addOverride = async (event: FormEvent) => {
+    event.preventDefault()
+    const name = cleanBillerName(billerName)
+    if (!name || !fundingSourceId) return
+    setSaving(true)
     try {
       const res = await fetch('/api/rules', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ruleType,
-          billerName: ruleType === 'BILLER_OVERRIDE' ? billerName : null,
-          fundingSourceId,
-          daysActive: ruleType === 'CHURN_TIMER' ? daysActive : null,
-          priority: ruleType === 'BILLER_OVERRIDE' ? 1 : 2,
-        }),
+        body: JSON.stringify({ billerName: name, fundingSourceId }),
       })
-
-      if (res.ok) {
-        setBillerName('')
-        setIsAdding(false)
-        fetchRules()
+      const data = (await res.json()) as { error?: string; rule?: RoutingRule }
+      if (!res.ok || !data.rule) {
+        toast(data.error || 'Could not add that override', 'error')
+        return
       }
-    } catch (err) {
-      console.error('Error creating rule:', err)
+      setRules((current) => [data.rule as RoutingRule, ...current])
+      setBillerName('')
+      toast(`${name} will charge ${cardLabel(data.rule.fundingSource)}`, 'success')
+    } catch {
+      toast('Could not add that override', 'error')
     } finally {
-      setSubmitting(false)
+      setSaving(false)
+    }
+  }
+
+  const toggle = async (rule: RoutingRule) => {
+    const next = !rule.isActive
+    setRules((current) =>
+      current.map((item) => (item.id === rule.id ? { ...item, isActive: next } : item))
+    )
+    try {
+      const res = await fetch('/api/rules', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ruleId: rule.id, isActive: next }),
+      })
+      if (!res.ok) throw new Error('update failed')
+      toast(next ? `${rule.billerName} override is on` : `${rule.billerName} override is off`, 'success')
+    } catch {
+      setRules((current) =>
+        current.map((item) => (item.id === rule.id ? { ...item, isActive: rule.isActive } : item))
+      )
+      toast('Could not update that override', 'error')
+    }
+  }
+
+  const remove = async (rule: RoutingRule) => {
+    setRules((current) => current.filter((item) => item.id !== rule.id))
+    try {
+      const res = await fetch('/api/rules', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ruleId: rule.id }),
+      })
+      if (!res.ok) throw new Error('delete failed')
+      toast(`${rule.billerName} override removed`, 'success')
+    } catch {
+      setRules((current) => [rule, ...current])
+      toast('Could not remove that override', 'error')
     }
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-100 pb-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl">
-            <Sliders className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="text-lg font-bold text-gray-900">Payment Routing Architecture</h3>
-            <p className="text-xs text-gray-500">
-              How money flows from your Virtual BSB to your tokenized cards
-            </p>
-          </div>
+    <section className="space-y-6 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+      <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 p-4">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-800">
+          Default flow
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-sm font-semibold text-gray-900">
+          <span className="rounded-lg border border-emerald-200 bg-white px-3 py-2">
+            Inbound Direct Debit
+          </span>
+          <ArrowRight className="h-4 w-4 text-emerald-600" />
+          <span className="rounded-lg border border-emerald-300 bg-white px-3 py-2">
+            Default Linked Card (Automatic)
+          </span>
+        </div>
+        <p className="mt-3 text-xs text-emerald-900/80">
+          All direct debits automatically charge your default card. Custom overrides below are
+          completely optional.
+        </p>
+      </div>
+
+      <form onSubmit={(event) => void addOverride(event)} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+        <div>
+          <label htmlFor="override-biller" className="mb-1 block text-xs font-semibold text-gray-700">
+            Biller name
+          </label>
+          <input
+            id="override-biller"
+            value={billerName}
+            onChange={(event) => setBillerName(event.target.value)}
+            placeholder="Synergy, Water Corporation, Aussie Broadband"
+            maxLength={80}
+            required
+            className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900"
+          />
+        </div>
+        <div>
+          <label htmlFor="override-card" className="mb-1 block text-xs font-semibold text-gray-700">
+            Charge this card
+          </label>
+          <select
+            id="override-card"
+            value={fundingSourceId}
+            onChange={(event) => setFundingSourceId(event.target.value)}
+            disabled={fundingSources.length === 0}
+            className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-semibold text-gray-900"
+          >
+            {fundingSources.length === 0 ? (
+              <option value="">Link a card first</option>
+            ) : (
+              fundingSources.map((source) => (
+                <option key={source.id} value={source.id}>
+                  {cardLabel(source)}
+                </option>
+              ))
+            )}
+          </select>
         </div>
         <button
-          onClick={() => setIsAdding(!isAdding)}
-          className="flex items-center gap-1.5 px-3 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-xs font-semibold transition"
+          type="submit"
+          disabled={saving || fundingSources.length === 0}
+          className="self-end rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
         >
-          <Plus className="w-4 h-4" /> {isAdding ? 'Close' : 'Add Custom Rule'}
+          {saving ? 'Adding…' : 'Add Override'}
         </button>
-      </div>
+      </form>
 
-      {/* Prominent Default Route Banner */}
-      <div className="p-4 bg-emerald-50/60 rounded-xl border border-emerald-100/80 space-y-3">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <Shield className="w-4 h-4 text-emerald-600" />
-            <span className="text-xs font-bold uppercase tracking-wider text-emerald-900">
-              Default Pass-Through Route
-            </span>
-          </div>
-          <span className="px-2.5 py-0.5 bg-emerald-600 text-white rounded-full text-[10px] font-bold tracking-wide">
-            AUTOMATIC FALLBACK
-          </span>
-        </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-          <div className="flex items-center gap-2 text-xs font-medium text-gray-800">
-            <span className="px-2 py-1 bg-white rounded border border-emerald-200 text-emerald-800 font-mono text-[11px]">
-              Inbound Direct Debit
-            </span>
-            <ArrowRight className="w-4 h-4 text-emerald-500 shrink-0" />
-            <span className="px-2.5 py-1 bg-white rounded border border-emerald-300 font-bold text-gray-900">
-              {defaultSource ? `${defaultSource.brand} (••${defaultSource.last4})` : 'Primary Linked Card'}
-            </span>
-          </div>
-        </div>
-
-        <div className="flex items-start gap-1.5 pt-1 text-[11px] text-emerald-800/80">
-          <Info className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-          <span>
-            <strong>Zero setup required:</strong> All incoming direct debits automatically pay via your default card above. Custom rules below are completely optional and only needed for specific biller overrides or points churn timers.
-          </span>
-        </div>
-      </div>
-
-      {/* Add Custom Rule Form */}
-      {isAdding && (
-        <form onSubmit={handleCreateRule} className="p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Rule Type</label>
-              <select
-                value={ruleType}
-                onChange={(e) => setRuleType(e.target.value as 'BILLER_OVERRIDE' | 'CHURN_TIMER')}
-                className="w-full text-xs p-2.5 rounded-lg border border-gray-300 bg-white"
-              >
-                <option value="BILLER_OVERRIDE">Biller Override (If Direct Debit from X)</option>
-                <option value="CHURN_TIMER">Points Churner Timer (Active Window)</option>
-              </select>
-            </div>
-
-            {ruleType === 'BILLER_OVERRIDE' ? (
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Biller Name</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Synergy Energy or Water Corp"
-                  value={billerName}
-                  onChange={(e) => setBillerName(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded-lg border border-gray-300 bg-white"
-                  required
-                />
-              </div>
-            ) : (
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Timer Window (Days)</label>
-                <input
-                  type="number"
-                  value={daysActive}
-                  onChange={(e) => setDaysActive(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded-lg border border-gray-300 bg-white"
-                  required
-                />
-              </div>
-            )}
-
-            <div className="sm:col-span-2">
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Target Funding Source</label>
-              <select
-                value={fundingSourceId}
-                onChange={(e) => setFundingSourceId(e.target.value)}
-                className="w-full text-xs p-2.5 rounded-lg border border-gray-300 bg-white"
-              >
-                {fundingSources.map((source) => (
-                  <option key={source.id} value={source.id}>
-                    {source.brand} (••{source.last4})
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition disabled:opacity-50"
-          >
-            {submitting ? 'Saving Rule...' : 'Save Routing Rule'}
-          </button>
-        </form>
-      )}
-
-      {/* Custom Overrides List */}
-      <div className="space-y-3 pt-2">
-        <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider">
-          Custom Overrides & Timers (Optional)
-        </h4>
-
+      <div>
+        <h2 className="text-xs font-bold uppercase tracking-wider text-gray-700">
+          Active biller overrides
+        </h2>
         {loading ? (
-          <div className="text-center py-4 text-xs text-gray-400">Loading active routing rules...</div>
+          <p className="mt-3 text-xs text-gray-400">Loading overrides…</p>
         ) : rules.length === 0 ? (
-          <div className="text-center py-5 bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
-            <p className="text-xs text-gray-500 font-medium">No custom override rules active.</p>
-            <p className="text-[11px] text-gray-400">
-              100% of direct debits will route directly to your Default Pass-Through card above.
-            </p>
-          </div>
+          <p className="mt-3 rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-5 text-center text-sm text-gray-500">
+            No custom overrides active. All direct debits follow your default card.
+          </p>
         ) : (
-          <div className="space-y-3">
+          <ul className="mt-3 divide-y divide-gray-100 rounded-xl border border-gray-100">
             {rules.map((rule) => (
-              <div
-                key={rule.id}
-                className="flex items-center justify-between p-3.5 bg-gray-50/70 border border-gray-100 rounded-xl text-xs"
-              >
-                <div className="flex items-center gap-3">
-                  {rule.ruleType === 'BILLER_OVERRIDE' && <Zap className="w-4 h-4 text-amber-500" />}
-                  {rule.ruleType === 'CHURN_TIMER' && <Clock className="w-4 h-4 text-emerald-600" />}
-                  {rule.ruleType === 'DEFAULT' && <Shield className="w-4 h-4 text-blue-500" />}
-
-                  <div>
-                    <p className="font-bold text-gray-900">
-                      {rule.ruleType === 'BILLER_OVERRIDE' && `IF Biller = "${rule.billerName}"`}
-                      {rule.ruleType === 'CHURN_TIMER' && 'Points Churn Active Window'}
-                      {rule.ruleType === 'DEFAULT' && 'Default Fallback Protocol'}
-                    </p>
-                    <p className="text-[11px] text-gray-500">
-                      THEN route charge to{' '}
-                      <strong className="text-gray-700">
-                        {rule.fundingSource.brand} (••{rule.fundingSource.last4})
-                      </strong>
-                    </p>
-                  </div>
-                </div>
-
-                {rule.expiresAt && (
-                  <span className="flex items-center gap-1 text-[11px] text-emerald-700 font-mono bg-emerald-100/70 px-2.5 py-1 rounded-full">
-                    <CheckCircle2 className="w-3 h-3" />
-                    Expires {new Date(rule.expiresAt).toLocaleDateString()}
+              <li key={rule.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                <div>
+                  <p className="text-sm font-bold text-gray-900">{rule.billerName}</p>
+                  <span className="mt-1 inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
+                    {cardLabel(rule.fundingSource)}
                   </span>
-                )}
-              </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={rule.isActive}
+                    aria-label={`${rule.isActive ? 'Turn off' : 'Turn on'} ${rule.billerName}`}
+                    onClick={() => void toggle(rule)}
+                    className={`relative h-6 w-11 rounded-full transition ${rule.isActive ? 'bg-emerald-600' : 'bg-gray-300'}`}
+                  >
+                    <span
+                      className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition ${rule.isActive ? 'left-5' : 'left-0.5'}`}
+                    />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Delete ${rule.billerName} override`}
+                    onClick={() => void remove(rule)}
+                    className="rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-700"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
       </div>
-    </div>
+    </section>
   )
 }

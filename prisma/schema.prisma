@@ -132,6 +132,7 @@ model PropertyVisibility {
 
 model VirtualAccount {
   id             String          @id @default(uuid())
+  displayName    String?
   accountType    AccountType     @default(INDIVIDUAL)
   bsb            String          @default("802-985")
   accountNumber  String          @unique

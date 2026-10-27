@@ -3,7 +3,14 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { prisma } from '@/lib/prisma'
 
-export async function GET() {
+const fundingSourceSelect = {
+  id: true,
+  brand: true,
+  last4: true,
+  nickname: true,
+} as const
+
+async function requireUser() {
   const cookieStore = await cookies()
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,99 +23,136 @@ export async function GET() {
       },
     }
   )
-
   const {
     data: { user },
   } = await supabase.auth.getUser()
+  return user
+}
 
+function cleanBillerName(value: unknown) {
+  if (typeof value !== 'string') return ''
+  return value
+    .replace(/[^\p{L}\p{N}&'’.\- ]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 80)
+}
+
+export async function GET() {
+  const user = await requireUser()
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  try {
-    const rules = await prisma.routingRule.findMany({
-      where: { userId: user.id },
-      include: {
-        fundingSource: true,
-      },
-      orderBy: { priority: 'asc' },
-    })
+  const rules = await prisma.routingRule.findMany({
+    where: { userId: user.id, ruleType: 'BILLER_OVERRIDE' },
+    include: { fundingSource: { select: fundingSourceSelect } },
+    orderBy: { createdAt: 'desc' },
+  })
 
-    return NextResponse.json({ rules })
-  } catch (err: unknown) {
-    const error = err as Error
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
+  return NextResponse.json({ rules })
 }
 
 export async function POST(req: Request) {
-  const cookieStore = await cookies()
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll()
-        },
-      },
-    }
-  )
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
+  const user = await requireUser()
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  try {
-    const body = await req.json()
-    const { ruleType, billerName, fundingSourceId, daysActive, priority } = body
+  const body = (await req.json().catch(() => null)) as {
+    billerName?: unknown
+    fundingSourceId?: unknown
+    virtualAccountId?: unknown
+  } | null
 
-    if (!fundingSourceId || typeof fundingSourceId !== 'string') {
-      return NextResponse.json({ error: 'Funding source required' }, { status: 400 })
-    }
+  const billerName = cleanBillerName(body?.billerName)
+  const fundingSourceId = typeof body?.fundingSourceId === 'string' ? body.fundingSourceId : ''
+  if (!billerName || !fundingSourceId) {
+    return NextResponse.json({ error: 'Biller name and card are required.' }, { status: 400 })
+  }
 
-    const allowedTypes = ['CHURN_TIMER', 'BILLER_OVERRIDE', 'DEFAULT'] as const
-    const resolvedType = allowedTypes.find((type) => type === ruleType) ?? 'BILLER_OVERRIDE'
+  const fundingSource = await prisma.fundingSource.findFirst({
+    where: { id: fundingSourceId, userId: user.id, isCancelled: false },
+    select: { id: true },
+  })
+  if (!fundingSource) {
+    return NextResponse.json({ error: 'That card is not on this account.' }, { status: 404 })
+  }
 
-    const fundingSource = await prisma.fundingSource.findFirst({
-      where: { id: fundingSourceId, userId: user.id, isCancelled: false },
+  let virtualAccountId: string | null = null
+  if (typeof body?.virtualAccountId === 'string' && body.virtualAccountId) {
+    const account = await prisma.virtualAccount.findFirst({
+      where: { id: body.virtualAccountId, userId: user.id },
       select: { id: true },
     })
-    if (!fundingSource) {
-      return NextResponse.json({ error: 'Funding source not found' }, { status: 404 })
+    if (!account) {
+      return NextResponse.json({ error: 'That account is not on this profile.' }, { status: 404 })
     }
-
-    let expiresAt: Date | null = null
-    if (resolvedType === 'CHURN_TIMER' && daysActive) {
-      const days = parseInt(String(daysActive), 10)
-      if (!Number.isFinite(days) || days < 1 || days > 730) {
-        return NextResponse.json({ error: 'Invalid churn timer duration' }, { status: 400 })
-      }
-      expiresAt = new Date()
-      expiresAt.setDate(expiresAt.getDate() + days)
-    }
-
-    const rule = await prisma.routingRule.create({
-      data: {
-        userId: user.id,
-        fundingSourceId: fundingSource.id,
-        ruleType: resolvedType,
-        billerName: billerName || null,
-        priority: priority ? parseInt(priority, 10) : 1,
-        expiresAt,
-      },
-      include: {
-        fundingSource: true,
-      },
-    })
-
-    return NextResponse.json({ success: true, rule })
-  } catch (err: unknown) {
-    const error = err as Error
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    virtualAccountId = account.id
   }
+
+  const rule = await prisma.routingRule.create({
+    data: {
+      userId: user.id,
+      fundingSourceId: fundingSource.id,
+      virtualAccountId,
+      billerName,
+      ruleType: 'BILLER_OVERRIDE',
+      priority: 1,
+      isActive: true,
+    },
+    include: { fundingSource: { select: fundingSourceSelect } },
+  })
+
+  return NextResponse.json({ success: true, rule })
+}
+
+export async function PATCH(req: Request) {
+  const user = await requireUser()
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const body = (await req.json().catch(() => null)) as {
+    ruleId?: unknown
+    isActive?: unknown
+  } | null
+  const ruleId = typeof body?.ruleId === 'string' ? body.ruleId : ''
+  if (!ruleId || typeof body?.isActive !== 'boolean') {
+    return NextResponse.json({ error: 'Rule and active state are required.' }, { status: 400 })
+  }
+
+  const updated = await prisma.routingRule.updateMany({
+    where: { id: ruleId, userId: user.id, ruleType: 'BILLER_OVERRIDE' },
+    data: { isActive: body.isActive },
+  })
+  if (updated.count !== 1) {
+    return NextResponse.json({ error: 'Override not found.' }, { status: 404 })
+  }
+
+  return NextResponse.json({ success: true })
+}
+
+export async function DELETE(req: Request) {
+  const user = await requireUser()
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const url = new URL(req.url)
+  const body = (await req.json().catch(() => null)) as { ruleId?: unknown } | null
+  const ruleId =
+    url.searchParams.get('ruleId') || (typeof body?.ruleId === 'string' ? body.ruleId : '')
+  if (!ruleId) {
+    return NextResponse.json({ error: 'Rule is required.' }, { status: 400 })
+  }
+
+  const deleted = await prisma.routingRule.deleteMany({
+    where: { id: ruleId, userId: user.id, ruleType: 'BILLER_OVERRIDE' },
+  })
+  if (deleted.count !== 1) {
+    return NextResponse.json({ error: 'Override not found.' }, { status: 404 })
+  }
+
+  return NextResponse.json({ success: true })
 }

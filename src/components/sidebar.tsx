@@ -13,7 +13,7 @@ import {
   Landmark,
   LayoutDashboard,
   Lightbulb,
-  Receipt,
+  Inbox,
   Route,
   TrendingDown,
   User,
@@ -31,55 +31,19 @@ interface NavItem {
   children?: NavItem[]
 }
 
-const dashboardItems: NavItem[] = [
-  { label: 'How it works', href: '/how-it-works', icon: Compass },
-  { label: 'Plans', href: '/billing', icon: Receipt },
-]
+export interface InvestmentNavItem {
+  id: string
+  label: string
+}
 
-const billingItems: NavItem[] = [
-  {
-    label: 'Direct debits',
-    href: '/direct-debits',
-    icon: Landmark,
-    children: [
-      { label: 'Personal', href: '/direct-debits/personal', icon: User },
-      { label: 'Household', href: '/direct-debits/household', icon: Users },
-      { label: 'Investment property', href: '/direct-debits/investment', icon: Building2 },
-    ],
-  },
+const moreItems: NavItem[] = [
   { label: 'Stats', href: '/billing/stats', icon: BarChart3 },
   { label: 'Mortgages', href: '/billing/mortgages', icon: House },
-  { label: 'Switch & Save', href: '/savings', icon: TrendingDown },
+  { label: 'Find cheaper bills', href: '/savings', icon: TrendingDown },
+  { label: 'Suggestion board', href: '/feedback', icon: Lightbulb },
 ]
 
-const paymentFlowItem: NavItem = {
-  label: 'Payment flow',
-  href: '/payment-flow',
-  icon: Route,
-}
-
-const payingItems: NavItem[] = [
-  {
-    label: 'Credit cards',
-    href: '/cards',
-    icon: CreditCard,
-    children: [{ label: 'Change credit cards', href: '/cards/change', icon: CreditCard }],
-  },
-  { label: 'Direct debit', href: '/paying/direct-debit', icon: Banknote },
-]
-
-const suggestionItem: NavItem = {
-  label: 'Suggestion board',
-  href: '/feedback',
-  icon: Lightbulb,
-}
-
-function isItemActive(
-  pathname: string,
-  href: string,
-  ready: boolean,
-  includeChildren = false
-) {
+function isPathActive(pathname: string, href: string, ready: boolean, includeChildren = false) {
   if (!ready || href.includes('#')) return false
   const pathOnly = href.split('#')[0]
   if (pathOnly === '/') return pathname === '/'
@@ -93,18 +57,32 @@ export function Sidebar({
   email,
   displayName = '',
   isAdmin = false,
+  personalLabel = 'Personal',
+  householdLabel = 'Household',
+  investments = [],
 }: {
   email: string
   displayName?: string
   isAdmin?: boolean
+  personalLabel?: string
+  householdLabel?: string
+  investments?: InvestmentNavItem[]
 }) {
   const pathname = usePathname() ?? ''
   const [navReady, setNavReady] = useState(false)
+  const [hash, setHash] = useState('')
   const [unreadCount, setUnreadCount] = useState(0)
 
   useEffect(() => {
     setNavReady(true)
   }, [])
+
+  useEffect(() => {
+    const read = () => setHash(window.location.hash.replace('#', ''))
+    read()
+    window.addEventListener('hashchange', read)
+    return () => window.removeEventListener('hashchange', read)
+  }, [pathname])
 
   useEffect(() => {
     let cancelled = false
@@ -144,7 +122,36 @@ export function Sidebar({
   const localPart = displayEmail.includes('@')
     ? displayEmail.split('@')[0]
     : displayEmail || 'Account'
-  const dashboardActive = isItemActive(pathname, '/', navReady)
+  const dashboardActive = isPathActive(pathname, '/', navReady)
+
+  const investmentChildren: NavItem[] =
+    investments.length > 0
+      ? investments.map((item) => ({
+          label: item.label,
+          href: `/direct-debits/investment#${item.id}`,
+          icon: Building2,
+        }))
+      : [{ label: 'Investment property', href: '/direct-debits/investment', icon: Building2 }]
+
+  const billingMethods: NavItem = {
+    label: 'Billing Methods',
+    href: '/direct-debits',
+    icon: Landmark,
+    children: [
+      { label: personalLabel, href: '/direct-debits/personal', icon: User },
+      { label: householdLabel, href: '/direct-debits/household', icon: Users },
+      ...investmentChildren,
+    ],
+  }
+
+  const childActive = (href: string, indexAmongInvestments: number) => {
+    if (!navReady) return false
+    const [path, fragment] = href.split('#')
+    if (pathname !== path) return false
+    if (!fragment) return true
+    if (hash) return hash === fragment
+    return indexAmongInvestments === 0
+  }
 
   return (
     <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col justify-between overflow-y-auto border-r border-gray-100 bg-white p-5">
@@ -185,34 +192,88 @@ export function Sidebar({
           </Link>
         </div>
 
-        <nav className="space-y-4">
+        <nav className="space-y-5">
           <div>
-            <NavLink item={{ label: 'Dashboard', href: '/', icon: LayoutDashboard }} active={dashboardActive} />
+            <NavLink
+              item={{ label: 'Dashboard', href: '/', icon: LayoutDashboard }}
+              active={dashboardActive}
+            />
             <div className="ml-4 mt-0.5 space-y-0.5 border-l border-gray-100 pl-2">
-              {dashboardItems.map((item) => (
-                <NavLink
-                  key={item.href}
-                  item={item}
-                  active={isItemActive(pathname, item.href, navReady)}
-                  nested
-                />
-              ))}
+              <NavLink
+                item={{ label: 'How it works', href: '/how-it-works', icon: Compass }}
+                active={isPathActive(pathname, '/how-it-works', navReady)}
+                nested
+              />
             </div>
           </div>
 
-          <NavGroup label="Billing" items={billingItems} pathname={pathname} ready={navReady} />
-          <NavLink item={paymentFlowItem} active={isItemActive(pathname, paymentFlowItem.href, navReady)} />
-          <NavGroup label="Paying" items={payingItems} pathname={pathname} ready={navReady} />
+          <ol className="relative space-y-4">
+            <li className="relative pl-8">
+              <StepMark n="1" />
+              <span className="absolute bottom-[-16px] left-[9px] top-5 w-px bg-emerald-200" />
+              <p className="px-1 pb-1 text-[10px] font-bold uppercase tracking-widest text-emerald-700">
+                Billing
+              </p>
+              <NavBranch
+                item={billingMethods}
+                pathname={pathname}
+                ready={navReady}
+                childActive={childActive}
+              />
+              <NavLink
+                item={{ label: 'Bill forwarding', href: '/billing/forwarding', icon: Inbox }}
+                active={isPathActive(pathname, '/billing/forwarding', navReady)}
+              />
+            </li>
+
+            <li className="relative pl-8">
+              <StepMark n="2" />
+              <span className="absolute bottom-[-16px] left-[9px] top-5 w-px bg-emerald-200" />
+              <NavLink
+                item={{ label: 'Payment flow', href: '/payment-flow', icon: Route }}
+                active={isPathActive(pathname, '/payment-flow', navReady)}
+                emphasis
+              />
+            </li>
+
+            <li className="relative pl-8">
+              <StepMark n="3" />
+              <p className="px-1 pb-1 text-[10px] font-bold uppercase tracking-widest text-emerald-700">
+                Paying
+              </p>
+              <NavBranch
+                item={{
+                  label: 'Credit cards',
+                  href: '/cards',
+                  icon: CreditCard,
+                  children: [{ label: 'Change credit cards', href: '/cards/change', icon: CreditCard }],
+                }}
+                pathname={pathname}
+                ready={navReady}
+                childActive={(href) => isPathActive(pathname, href, navReady)}
+              />
+              <NavLink
+                item={{ label: 'Direct debit', href: '/paying/direct-debit', icon: Banknote }}
+                active={isPathActive(pathname, '/paying/direct-debit', navReady)}
+              />
+            </li>
+          </ol>
 
           <div className="border-t border-gray-100 pt-3">
-            <NavLink
-              item={suggestionItem}
-              active={isItemActive(pathname, suggestionItem.href, navReady)}
-            />
+            <p className="px-3.5 pb-1 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+              More
+            </p>
+            {moreItems.map((item) => (
+              <NavLink
+                key={item.href}
+                item={item}
+                active={isPathActive(pathname, item.href, navReady)}
+              />
+            ))}
             {isAdmin && (
               <NavLink
                 item={{ label: 'Admin', href: '/admin', icon: Shield }}
-                active={isItemActive(pathname, '/admin', navReady, true)}
+                active={isPathActive(pathname, '/admin', navReady, true)}
               />
             )}
           </div>
@@ -229,44 +290,35 @@ export function Sidebar({
   )
 }
 
-function NavGroup({
-  label,
-  items,
+function StepMark({ n }: { n: string }) {
+  return (
+    <span className="absolute left-0 top-0 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-[10px] font-bold text-white">
+      {n}
+    </span>
+  )
+}
+
+function NavBranch({
+  item,
   pathname,
   ready,
+  childActive,
 }: {
-  label: string
-  items: NavItem[]
+  item: NavItem
   pathname: string
   ready: boolean
+  childActive: (href: string, index: number) => boolean
 }) {
   return (
     <div>
-      <p className="px-3.5 pb-1 text-[10px] font-bold uppercase tracking-widest text-gray-400">
-        {label}
-      </p>
-      <div className="space-y-0.5">
-        {items.map((item) => (
-          <div key={item.href}>
-            <NavLink
-              item={item}
-              active={isItemActive(pathname, item.href, ready, Boolean(item.children))}
-            />
-            {item.children && (
-              <div className="ml-4 mt-0.5 space-y-0.5 border-l border-gray-100 pl-2">
-                {item.children.map((child) => (
-                  <NavLink
-                    key={child.href}
-                    item={child}
-                    active={isItemActive(pathname, child.href, ready)}
-                    nested
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
+      <NavLink item={item} active={isPathActive(pathname, item.href, ready, Boolean(item.children))} />
+      {item.children && (
+        <div className="ml-4 mt-0.5 space-y-0.5 border-l border-emerald-100 pl-2">
+          {item.children.map((child, index) => (
+            <NavLink key={child.href} item={child} active={childActive(child.href, index)} nested />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -275,10 +327,12 @@ function NavLink({
   item,
   active,
   nested = false,
+  emphasis = false,
 }: {
   item: NavItem
   active: boolean
   nested?: boolean
+  emphasis?: boolean
 }) {
   const Icon = item.icon
   return (
@@ -286,10 +340,16 @@ function NavLink({
       href={item.href}
       className={`flex items-center gap-2.5 rounded-xl px-3.5 font-semibold transition ${
         nested ? 'py-2 text-[11px]' : 'py-2.5 text-xs'
-      } ${active ? 'bg-emerald-50 text-emerald-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`}
+      } ${
+        active
+          ? 'bg-emerald-50 text-emerald-700'
+          : emphasis
+            ? 'border border-emerald-100 bg-emerald-50/40 text-gray-800 hover:bg-emerald-50'
+            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+      }`}
     >
-      <Icon className={nested ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
-      <span>{item.label}</span>
+      <Icon className={nested ? 'h-3.5 w-3.5 shrink-0' : 'h-4 w-4 shrink-0'} />
+      <span className="truncate">{item.label}</span>
     </Link>
   )
 }

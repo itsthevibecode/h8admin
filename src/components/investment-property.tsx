@@ -3,6 +3,9 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Building2, Check, Copy, Landmark, UserPlus } from 'lucide-react'
+import { AccountNameEditor } from '@/components/editable-name'
+import { CardPayBanner } from '@/components/card-pay-banner'
+import { investmentLabel } from '@/lib/billing-labels'
 
 export interface InvestmentPartner {
   id: string
@@ -15,6 +18,7 @@ export interface InvestmentAccount {
   id: string
   bsb: string
   accountNumber: string
+  displayName: string | null
   isOwner: boolean
   partners: InvestmentPartner[]
 }
@@ -136,14 +140,28 @@ export function InvestmentProperty({
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-8">
+      <CardPayBanner />
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-700">
-            Direct debits
+            Billing methods
           </p>
-          <h1 className="text-2xl font-bold text-gray-900">Investment property</h1>
+          {accounts.length === 1 && accounts[0].isOwner ? (
+            <AccountNameEditor
+              accountId={accounts[0].id}
+              name={accounts[0].displayName}
+              fallback="Investment property"
+            />
+          ) : (
+            <h1 className="text-2xl font-bold text-gray-900">
+              {accounts.length === 1
+                ? investmentLabel(accounts[0].displayName, 0, 1)
+                : 'Investment properties'}
+            </h1>
+          )}
           <p className="mt-1 text-sm text-gray-500">
-            A Virtual BSB for a rental or investment, kept apart from the household.
+            A Virtual BSB for a rental or investment, kept apart from the household. Rename each one
+            to match the property.
           </p>
         </div>
         {accounts.length > 0 && (
@@ -195,13 +213,25 @@ export function InvestmentProperty({
       {accounts.map((account, index) => {
         const rows = debits.filter((debit) => debit.virtualAccountId === account.id)
         return (
-          <section key={account.id} className="space-y-4">
+          <section key={account.id} id={account.id} className="scroll-mt-6 space-y-4">
             <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-900 to-emerald-950 p-6 text-white shadow-xl">
               <Landmark className="pointer-events-none absolute right-6 top-6 h-12 w-12 text-white/10" />
               <div className="relative z-10 flex items-start justify-between gap-3">
-                <p className="text-xs font-semibold uppercase tracking-wider text-emerald-300">
-                  Investment property {accounts.length > 1 ? index + 1 : ''}
-                </p>
+                <div>
+                  {accounts.length > 1 && account.isOwner ? (
+                    <AccountNameEditor
+                      accountId={account.id}
+                      name={account.displayName}
+                      fallback={investmentLabel(null, index, accounts.length)}
+                      className="text-lg font-bold text-white"
+                      level="h2"
+                    />
+                  ) : (
+                    <h2 className="text-lg font-bold text-white">
+                      {investmentLabel(account.displayName, index, accounts.length)}
+                    </h2>
+                  )}
+                </div>
                 {account.isOwner && (
                   <button
                     type="button"

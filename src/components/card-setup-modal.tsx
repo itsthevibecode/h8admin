@@ -8,8 +8,9 @@ import {
   useStripe,
   useElements,
 } from '@stripe/react-stripe-js'
-import { X, CreditCard, Lock, AlertCircle } from 'lucide-react'
+import { X, CreditCard, Lock, AlertCircle, Loader2 } from 'lucide-react'
 import { LegalConsentCheckbox } from '@/components/legal-consent-modal'
+import { useToast } from '@/components/ui/toast'
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
@@ -21,6 +22,18 @@ function SetupForm({ onSuccess, onClose }: { onSuccess: () => void; onClose: () 
   const [errorMsg, setErrorMsg] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [agreed, setAgreed] = useState(false)
+  const [ready, setReady] = useState(false)
+  const { toast } = useToast()
+
+  useEffect(() => {
+    if (ready) return
+    const timer = window.setTimeout(() => {
+      setErrorMsg(
+        'The secure card form did not finish loading. Refresh this page, or open H8Admin in Chrome or Safari if the boxes stay empty.'
+      )
+    }, 8000)
+    return () => window.clearTimeout(timer)
+  }, [ready])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -32,40 +45,64 @@ function SetupForm({ onSuccess, onClose }: { onSuccess: () => void; onClose: () 
     const { setupIntent, error } = await stripe.confirmSetup({
       elements,
       redirect: 'if_required',
+      confirmParams: {
+        return_url: `${window.location.origin}/cards`,
+      },
     })
 
     if (error) {
       setErrorMsg(error.message || 'Payment method verification failed')
+      toast(error.message || 'Payment method verification failed', 'error')
       setSubmitting(false)
       return
     }
 
-    if (setupIntent && setupIntent.payment_method) {
-      const pmId =
-        typeof setupIntent.payment_method === 'string'
-          ? setupIntent.payment_method
-          : setupIntent.payment_method.id
-
-      const res = await fetch('/api/cards/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paymentMethodId: pmId }),
-      })
-
-      if (res.ok) {
-        onSuccess()
-      } else {
-        const data = await res.json()
-        setErrorMsg(data.error || 'Failed to save funding source')
-      }
+    if (!setupIntent || setupIntent.status !== 'succeeded' || !setupIntent.payment_method) {
+      setErrorMsg('The card was not confirmed. Try again, or complete the bank check if one opens.')
+      setSubmitting(false)
+      return
     }
 
-    setSubmitting(false)
+    const paymentMethodId =
+      typeof setupIntent.payment_method === 'string'
+        ? setupIntent.payment_method
+        : setupIntent.payment_method.id
+
+    try {
+      const res = await fetch('/api/stripe/save-payment-method', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentMethodId }),
+      })
+      const data = (await res.json()) as { error?: string }
+      if (!res.ok) {
+        setErrorMsg(data.error || 'Failed to save funding source')
+        toast(data.error || 'Failed to save funding source', 'error')
+        setSubmitting(false)
+        return
+      }
+      toast('Card linked', 'success')
+      onSuccess()
+    } catch {
+      setErrorMsg('Failed to save funding source')
+      toast('Failed to save funding source', 'error')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <PaymentElement />
+      <PaymentElement
+        onReady={() => {
+          setReady(true)
+          setErrorMsg('')
+        }}
+        onLoadError={(event) => {
+          const message = event.error?.message || 'The card form did not load.'
+          setErrorMsg(message)
+        }}
+      />
       <LegalConsentCheckbox agreed={agreed} onChange={setAgreed} />
       {errorMsg && (
         <div className="p-3 text-xs text-red-600 bg-red-50 rounded-md border border-red-200">
@@ -85,7 +122,13 @@ function SetupForm({ onSuccess, onClose }: { onSuccess: () => void; onClose: () 
           disabled={!stripe || submitting || !agreed}
           className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm rounded-lg transition disabled:opacity-50"
         >
-          {submitting ? 'Tokenizing...' : 'Link Funding Source'}
+          {submitting ? (
+            <span className="inline-flex items-center justify-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" /> Linking card…
+            </span>
+          ) : (
+            'Link Funding Source'
+          )}
         </button>
       </div>
     </form>
@@ -105,25 +148,32 @@ export function CardSetupModal({
   const [initError, setInitError] = useState('')
 
   useEffect(() => {
-    if (isOpen) {
-      setInitError('')
-      setClientSecret('')
-      fetch('/api/stripe/create-setup-intent', { method: 'POST' })
-        .then(async (res) => {
-          const data = await res.json()
-          if (!res.ok) {
-            throw new Error(data.error || 'Failed to initialize payment vault')
-          }
-          if (data.clientSecret) {
-            setClientSecret(data.clientSecret)
-          } else {
-            throw new Error('No client secret returned from server')
-          }
-        })
-        .catch((err) => {
-          console.error('Error fetching SetupIntent:', err)
-          setInitError(err.message || 'Vault connection failed')
-        })
+    if (!isOpen) return
+    let cancelled = false
+    setInitError('')
+    setClientSecret('')
+    fetch('/api/stripe/create-setup-intent', { method: 'POST' })
+      .then(async (res) => {
+        const data = await res.json()
+        if (!res.ok) {
+          throw new Error(data.error || 'Failed to initialize payment vault')
+        }
+        if (!data.clientSecret) {
+          throw new Error('No client secret returned from server')
+        }
+        return data.clientSecret as string
+      })
+      .then((secret) => {
+        if (!cancelled) setClientSecret(secret)
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return
+        const message = err instanceof Error ? err.message : 'Vault connection failed'
+        console.error('Error fetching SetupIntent:', message)
+        setInitError(message)
+      })
+    return () => {
+      cancelled = true
     }
   }, [isOpen])
 
@@ -169,7 +219,7 @@ export function CardSetupModal({
             </p>
           </div>
         ) : clientSecret ? (
-          <Elements stripe={stripePromise} options={{ clientSecret }}>
+          <Elements key={clientSecret} stripe={stripePromise} options={{ clientSecret }}>
             <SetupForm onSuccess={onSuccess} onClose={onClose} />
           </Elements>
         ) : (
