@@ -6,21 +6,38 @@ const pillars = [
     icon: Landmark,
     title: 'Permanent Financial Address',
     description:
-      'Issue one Virtual BSB (802-985) to your utilities, councils, and telcos once for life.',
+      'Give participating utilities, insurers, telcos, councils and subscriptions one permanent set of payment details, then change how you fund those bills without updating every biller.',
   },
   {
     icon: ShieldCheck,
-    title: 'Proxy Data Shield',
+    title: 'Fewer details shared with billers',
     description:
-      'Keep your real bank accounts and credit cards completely invisible to biller databases. If a utility gets breached, your actual accounts remain untouched.',
+      'Connect your Australian bank accounts and cards to H8Admin so billers can use your permanent payment details instead of your everyday account numbers wherever the product supports that flow.',
   },
   {
     icon: Sparkles,
-    title: 'Rewards & Offset Protection',
+    title: 'You stay in control',
     description:
-      'Route bills to new cards to hit sign-up bonus windows, or maintain uninterrupted offset liquidity during home loan refinancing.',
+      'Choose preferred funding sources and fallback rules. If a payment cannot be funded, you are notified and the payment is handled according to your rules — H8Admin does not lend money or cover shortfalls.',
   },
 ]
+
+export function MobileBrandIntro() {
+  return (
+    <div className="mb-6 space-y-2 lg:hidden">
+      <Logo />
+      <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">
+        Personal Financial Autopilot
+      </p>
+      <h1 className="text-xl font-semibold tracking-tight text-gray-900">
+        Your bills. One permanent payment address.
+      </h1>
+      <p className="text-sm leading-relaxed text-gray-600">
+        One permanent set of payment details while you stay in control of where payments come from.
+      </p>
+    </div>
+  )
+}
 
 export function BrandPanel() {
   return (
@@ -42,11 +59,11 @@ export function BrandPanel() {
             Personal Financial Autopilot
           </span>
           <h1 className="text-4xl leading-tight font-semibold tracking-tight text-balance xl:text-5xl">
-            Never update direct debits with 30+ billers again.
+            Your bills. One permanent payment address.
           </h1>
           <p className="text-base leading-relaxed text-pretty text-sidebar-foreground/70">
-            H8Admin acts as an intelligent proxy between your utility providers and your money. Switch
-            offset accounts or churn rewards cards in one click without missed bills or dishonour fees.
+            H8Admin sits between your billers and your money, giving you one permanent set of payment
+            details while you stay in control of where your payments come from.
           </p>
         </div>
 
@@ -66,7 +83,8 @@ export function BrandPanel() {
       </div>
 
       <p className="relative text-xs text-sidebar-foreground/55">
-        PCI-DSS Level 1 tokenization via Stripe Australia. Zero-depository pass-through.
+        Card details are tokenized by our payment partners. H8Admin is not a bank, lender or
+        overdraft provider.
       </p>
     </section>
   )

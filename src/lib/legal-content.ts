@@ -18,38 +18,38 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
     slug: 'terms-and-conditions',
     title: 'Terms and Conditions',
     navLabel: 'Terms and Conditions',
-    effectiveDate: '19 October 2026',
-    version: '1.0',
+    effectiveDate: '25 November 2026',
+    version: '1.1',
     summary:
-      'The contract for using H8Admin as a zero-depository direct-debit routing service, including fees and the rollover ledger.',
+      'The contract for using H8Admin as a bill-payment routing service, including fees and promotional credits.',
     sections: [
       {
-        heading: 'Zero-depository model',
+        heading: 'Payment routing model',
         paragraphs: [
-          'H8Admin Pty Ltd provides software that routes your nominated direct debits. H8Admin is not an authorised deposit-taking institution and does not hold, pool, or invest customer funds.',
-          'A Virtual BSB and account number is a routing address for billers. It is not a bank account, stored-value facility, or deposit. Cleared funds move from your nominated funding source to the biller. H8Admin never takes beneficial ownership of that money.',
+          'H8Admin Pty Ltd provides software that helps you give participating billers a permanent payment address and route bill payments from funding sources you connect. H8Admin is not an authorised deposit-taking institution, is not a lender, and does not offer overdrafts or shortfall cover.',
+          'A Virtual BSB and account number is intended as a routing address for billers. It is not presented as an everyday spending account or unrestricted stored-value wallet. How customer funds are handled depends on banking and payment-partner arrangements, which remain subject to legal and regulatory confirmation.',
         ],
       },
       {
         heading: 'Virtual BSB licence to use',
         paragraphs: [
-          'We grant you a personal, non-transferable licence to give the Virtual BSB we issue to your billers for direct debit and PayTo instructions. You must not sell, sublicense, or represent that address as a deposit account.',
-          'We may suspend or reissue a Virtual BSB if it is used for a purpose other than routing your own household, personal, or investment-property bills, or if required by our payment partners or by law.',
+          'Where we issue a Virtual BSB, we grant you a personal, non-transferable licence to give that address to your billers for supported direct debit and related instructions. You must not sell, sublicense, or represent that address as a deposit account.',
+          'We may suspend or reissue a Virtual BSB if it is used for a purpose other than routing your own household, personal, or investment-property bills, or if required by our payment partners or by law. Allocation of any particular BSB range depends on confirmed partner arrangements.',
         ],
       },
       {
         heading: 'Fees',
         paragraphs: [
-          'The platform fee is $1.00 for each successful direct debit in a calendar month, capped at a $5.00 baseline. That baseline covers up to $3,000 of routed volume in the month.',
-          'Volume above $3,000 in the same month is charged at 0.5% of the excess, unless your Rollover Volume Ledger still has a positive fee-free balance. The ledger is applied before the overage rate.',
-          'Fees are estimates until the monthly invoice is issued through Stripe. Card-scheme and biller fees charged by third parties are separate.',
+          'The standard H8Admin customer fee is a flat $1.00 for each successfully completed bill payment. That fee is only charged when the relevant payment successfully completes, and it is disclosed before you authorise the payment.',
+          'Failed, declined or pending payments are not charged the $1.00 H8Admin success fee. Payment-provider costs incurred by H8Admin are H8Admin’s business cost and are not published as a separate customer surcharge.',
+          'Private-beta accounts may temporarily use a different fee arrangement. Any such arrangement will be shown in your billing view. Biller, card-scheme or bank fees charged by third parties remain separate.',
         ],
       },
       {
-        heading: 'Rollover Volume Ledger',
+        heading: 'Promotional and referral credits',
         paragraphs: [
-          'Referral and promotional credits are stored as a fee-free routing balance in cents. The balance does not expire, is not cash, is not redeemable for money, and cannot be transferred except as we expressly allow.',
-          'While the balance is above zero, it offsets the 0.5% overage on volume above the $3,000 monthly cap. It does not reduce the $5.00 baseline fee.',
+          'Referral and promotional credits may be stored as an account credit balance. The balance is not cash, is not redeemable for money, and cannot be transferred except as we expressly allow.',
+          'While a credit balance remains, it may be applied against eligible future H8Admin fees as described in the promotion or referral offer. Credits do not guarantee that any particular payment will succeed.',
         ],
       },
       {
@@ -65,8 +65,8 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
     slug: 'privacy-policy',
     title: 'Privacy Policy',
     navLabel: 'Privacy Policy',
-    effectiveDate: '19 October 2026',
-    version: '1.0',
+    effectiveDate: '25 November 2026',
+    version: '1.1',
     summary:
       'How H8Admin handles personal information under the Australian Privacy Principles, including card tokenization and referral disclosures.',
     sections: [
@@ -81,7 +81,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
         heading: 'What we collect',
         paragraphs: [
           'We collect your name, email, household membership, Virtual BSB, biller names, debit amounts, and routing preferences so we can run the service.',
-          'We do not collect or store full card numbers or bank login secrets. Card data is tokenized by Stripe under PCI-DSS Level 1 controls. H8Admin stores only the token reference, brand, and last four digits.',
+          'We do not collect or store full card numbers or bank login secrets. Eligible card details are tokenized by our payment partners. H8Admin stores only the token reference, brand, and last four digits. A payment partner’s PCI compliance does not mean H8Admin itself holds PCI-DSS Level 1 certification.',
         ],
       },
       {
@@ -111,8 +111,8 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
     slug: 'direct-debit-request-agreement',
     title: 'DDR Service Agreement',
     navLabel: 'DDR Service Agreement',
-    effectiveDate: '19 October 2026',
-    version: '1.0',
+    effectiveDate: '25 November 2026',
+    version: '1.1',
     summary:
       'Your authority for H8Admin to arrange BECS and PayTo direct debits against your nominated funding source.',
     sections: [
@@ -120,7 +120,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
         heading: 'Authority',
         paragraphs: [
           'By linking a funding source you request and authorise H8Admin, and its payment partners, to arrange direct debits and PayTo payments for billers who debit your Virtual BSB. This is a Direct Debit Request service agreement for the purposes of the AusPayNet BECS rules and the PayTo framework.',
-          'The debit is drawn from the card or account you nominated. H8Admin does not debit a deposit balance it holds, because it holds none.',
+          'The debit is drawn from the card or account you nominated. H8Admin is not presented as an unrestricted stored-value wallet. Any intermediate settlement or ledger arrangements with banking partners remain subject to legal and regulatory confirmation.',
         ],
       },
       {
@@ -133,8 +133,8 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
       {
         heading: 'Dishonour',
         paragraphs: [
-          'If your funding source declines, expires, or has insufficient limit, the debit is dishonoured. You remain liable to the biller for the underlying bill. H8Admin is not liable for late fees, default listings, or service disconnection that follow a dishonour caused by your funding source.',
-          'You must keep a working funding source on the account while billers are debiting the Virtual BSB.',
+          'If your funding source declines, expires, or has insufficient funds or limit, the payment fails or remains pending under your rules and you are notified. You remain liable to the biller for the underlying bill. H8Admin does not lend money, cover shortfalls, or guarantee that a payment will succeed.',
+          'You must keep a working funding source on the account while billers are debiting your permanent payment details. H8Admin is not liable for late fees, default listings, or service disconnection that follow a funding failure.',
         ],
       },
       {
@@ -172,15 +172,15 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
       {
         heading: 'Accountant and tax-agent referrals',
         paragraphs: [
-          'If we introduce you to a CPA, tax agent, or accountant, we may receive a referral fee of between $50 and $150 when that introduction results in an engagement. The fee is paid by the practitioner, not added to your H8Admin invoice.',
-          'The practitioner, not H8Admin, is responsible for the advice they give. We do not supervise that advice.',
+          'H8Admin may later introduce you to a CPA, tax agent, or accountant. If that happens and an introduction results in an engagement, H8Admin may receive a referral fee from the practitioner. Any such fee is paid by the practitioner, not added to your H8Admin invoice.',
+          'Referral commissions are a potential future revenue stream and are not a confirmed current product feature. The practitioner, not H8Admin, is responsible for the advice they give.',
         ],
       },
       {
         heading: 'Mortgage broker referrals',
         paragraphs: [
-          'If we introduce you to a mortgage broker, that broker must disclose their own commissions to you under the law that applies to credit assistance. H8Admin may receive a separate introducer fee from the broker.',
-          'We will tell you that a fee may be payable before we pass on your details. We do not recommend a particular credit contract.',
+          'If we later introduce you to a mortgage broker, that broker must disclose their own commissions to you under the law that applies to credit assistance. H8Admin may receive a separate introducer fee from the broker if such arrangements are put in place.',
+          'We will tell you that a fee may be payable before we pass on your details. We do not recommend a particular credit contract. These introducer arrangements are potential future capabilities, not a confirmed current feature.',
         ],
       },
     ],
