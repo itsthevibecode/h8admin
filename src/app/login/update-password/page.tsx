@@ -7,7 +7,7 @@ import { createClient } from '@/utils/supabase/client'
 
 export default function UpdatePasswordPage() {
   const router = useRouter()
-  const supabase = createClient()
+  const [supabase, setSupabase] = useState<ReturnType<typeof createClient> | null>(null)
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [ready, setReady] = useState(false)
@@ -16,13 +16,16 @@ export default function UpdatePasswordPage() {
   const [done, setDone] = useState(false)
 
   useEffect(() => {
+    const client = createClient()
+    setSupabase(client)
+
     let cancelled = false
     void (async () => {
-      const { data } = await supabase.auth.getSession()
+      const { data } = await client.auth.getSession()
       if (!cancelled) setReady(Boolean(data.session))
     })()
 
-    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+    const { data: sub } = client.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
         setReady(true)
       }
@@ -32,10 +35,11 @@ export default function UpdatePasswordPage() {
       cancelled = true
       sub.subscription.unsubscribe()
     }
-  }, [supabase.auth])
+  }, [])
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
+    if (!supabase) return
     setErrorMsg('')
     if (password.length < 6) {
       setErrorMsg('Password must be at least 6 characters.')
@@ -122,7 +126,7 @@ export default function UpdatePasswordPage() {
             )}
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !supabase}
               className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
             >
               {loading && <Loader2 className="h-4 w-4 animate-spin" />}
