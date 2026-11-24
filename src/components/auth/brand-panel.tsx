@@ -26,7 +26,7 @@ export function BrandPanel() {
   return (
     <section
       aria-label="About H8Admin"
-      className="relative hidden flex-col justify-between overflow-hidden bg-sidebar p-10 text-sidebar-foreground lg:sticky lg:top-0 lg:flex lg:h-dvh xl:p-14"
+      className="relative hidden flex-col justify-between overflow-y-auto bg-sidebar p-10 text-sidebar-foreground lg:flex lg:h-full xl:p-14"
     >
       <div
         aria-hidden="true"
