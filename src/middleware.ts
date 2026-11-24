@@ -54,13 +54,19 @@ export async function middleware(request: NextRequest) {
       pathname.startsWith('/join/') ||
       pathname.startsWith('/legal/') ||
       pathname === '/api/auth/can-register'
+    const passwordRecovery = pathname === '/login/update-password'
     if (!verified) {
       if (pathname.startsWith('/api/') && !openWhilePending) {
         const denied = NextResponse.json({ error: 'Authenticator setup is required' }, { status: 401 })
         supabaseResponse.cookies.getAll().forEach((cookie) => denied.cookies.set(cookie))
         return denied
       }
-      if (pathname !== '/login/enroll' && !openWhilePending && !pathname.startsWith('/api/')) {
+      if (
+        pathname !== '/login/enroll' &&
+        !passwordRecovery &&
+        !openWhilePending &&
+        !pathname.startsWith('/api/')
+      ) {
         const url = request.nextUrl.clone()
         url.pathname = '/login/enroll'
         url.search = ''
@@ -72,7 +78,12 @@ export async function middleware(request: NextRequest) {
         supabaseResponse.cookies.getAll().forEach((cookie) => denied.cookies.set(cookie))
         return denied
       }
-      if (pathname !== '/login/verify' && !openWhilePending && !pathname.startsWith('/api/')) {
+      if (
+        pathname !== '/login/verify' &&
+        !passwordRecovery &&
+        !openWhilePending &&
+        !pathname.startsWith('/api/')
+      ) {
         const url = request.nextUrl.clone()
         const callback = pathname.startsWith('/login')
           ? getSafeCallbackUrl(request.nextUrl.searchParams.get('callbackUrl'))
@@ -82,7 +93,7 @@ export async function middleware(request: NextRequest) {
         url.searchParams.set('callbackUrl', callback)
         return redirectWithSession(url, supabaseResponse)
       }
-    } else if (pathname.startsWith('/login')) {
+    } else if (pathname.startsWith('/login') && !passwordRecovery) {
       const url = request.nextUrl.clone()
       const callbackUrl = getSafeCallbackUrl(request.nextUrl.searchParams.get('callbackUrl'))
       const destination = new URL(callbackUrl, request.nextUrl.origin)

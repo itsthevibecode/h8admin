@@ -79,8 +79,9 @@ export function DashboardView({
     }
   }
 
-  const bsb = activeAccount?.bsb || '802-985'
-  const accountNumber = activeAccount?.accountNumber || ''
+  const activated = Boolean(activeAccount)
+  const bsb = activeAccount?.bsb ?? ''
+  const accountNumber = activeAccount?.accountNumber ?? ''
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8">
@@ -128,67 +129,90 @@ export function DashboardView({
             </span>
             <span
               className={`px-2.5 py-1 rounded-full text-xs font-medium border ${
-                fundingSource
+                activated && fundingSource
                   ? 'bg-emerald-500/20 border-emerald-400/30 text-emerald-300'
                   : 'bg-amber-500/20 border-amber-400/30 text-amber-300'
               }`}
             >
-              {fundingSource ? 'Active Intermediary' : 'Setup Required'}
+              {activated
+                ? fundingSource
+                  ? 'Active Intermediary'
+                  : 'Funding Required'
+                : 'Activation Required'}
             </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-            <div>
-              <p className="text-xs text-emerald-200/70 uppercase tracking-wider mb-1">BSB Number</p>
-              <button
-                type="button"
-                onClick={() => void copyText(bsb, 'BSB copied to clipboard!')}
-                className="flex items-center gap-2 text-2xl font-mono font-bold tracking-widest text-white hover:text-emerald-100"
-              >
-                {bsb}
-                <Copy className="h-4 w-4 text-emerald-300" />
-              </button>
-            </div>
-            <div>
-              <p className="text-xs text-emerald-200/70 uppercase tracking-wider mb-1">
-                Virtual Account Number ({activeAccount?.accountType || 'INDIVIDUAL'})
+          {activated ? (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                <div>
+                  <p className="text-xs text-emerald-200/70 uppercase tracking-wider mb-1">BSB Number</p>
+                  <button
+                    type="button"
+                    onClick={() => void copyText(bsb, 'BSB copied to clipboard!')}
+                    className="flex items-center gap-2 text-2xl font-mono font-bold tracking-widest text-white hover:text-emerald-100"
+                  >
+                    {bsb}
+                    <Copy className="h-4 w-4 text-emerald-300" />
+                  </button>
+                </div>
+                <div>
+                  <p className="text-xs text-emerald-200/70 uppercase tracking-wider mb-1">
+                    Virtual Account Number ({activeAccount?.accountType})
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void copyText(
+                        `BSB: ${bsb}\nAccount: ${accountNumber}`,
+                        'Account details copied!'
+                      )
+                    }
+                    className="flex items-center gap-2 text-2xl font-mono font-bold tracking-widest text-white hover:text-emerald-100"
+                  >
+                    {accountNumber}
+                    <Copy className="h-4 w-4 text-emerald-300" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-emerald-800/60 flex flex-wrap justify-between items-center text-xs text-emerald-200/80 gap-2">
+                <span>
+                  Primary Funding Source:{' '}
+                  <strong className="text-white">
+                    {fundingSource
+                      ? `${fundingSource.brand} (••${fundingSource.last4})`
+                      : 'Not Linked'}
+                  </strong>
+                </span>
+                {fundingSource ? (
+                  <span className="flex items-center gap-1 text-emerald-400 font-medium">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Pass-Through Active
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => setIsModalOpen(true)}
+                    className="text-emerald-300 underline hover:text-white"
+                  >
+                    Link Card to Activate
+                  </button>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="space-y-3 pt-2">
+              <p className="text-sm text-emerald-100/90">
+                BSB and account numbers stay hidden until you activate a billing method. Spin up
+                Personal, Household, or Investment from the tabs above.
               </p>
-              <button
-                type="button"
-                onClick={() =>
-                  void copyText(
-                    `BSB: ${bsb}\nAccount: ${accountNumber}`,
-                    'Account details copied!'
-                  )
-                }
-                className="flex items-center gap-2 text-2xl font-mono font-bold tracking-widest text-white hover:text-emerald-100"
+              <a
+                href="/direct-debits/personal"
+                className="inline-flex rounded-xl bg-white/10 px-4 py-2 text-xs font-bold text-white hover:bg-white/20"
               >
-                {accountNumber || 'Pending Setup'}
-                <Copy className="h-4 w-4 text-emerald-300" />
-              </button>
+                Activate personal account
+              </a>
             </div>
-          </div>
-
-          <div className="pt-4 border-t border-emerald-800/60 flex flex-wrap justify-between items-center text-xs text-emerald-200/80 gap-2">
-            <span>
-              Primary Funding Source:{' '}
-              <strong className="text-white">
-                {fundingSource ? `${fundingSource.brand} (••${fundingSource.last4})` : 'Not Linked'}
-              </strong>
-            </span>
-            {fundingSource ? (
-              <span className="flex items-center gap-1 text-emerald-400 font-medium">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Pass-Through Active
-              </span>
-            ) : (
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="text-emerald-300 underline hover:text-white"
-              >
-                Link Card to Activate
-              </button>
-            )}
-          </div>
+          )}
         </div>
       </div>
 

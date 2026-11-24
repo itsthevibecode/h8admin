@@ -133,18 +133,6 @@ export default async function DashboardPage() {
       }
       virtualAccounts = Array.from(byId.values())
 
-      if (virtualAccounts.length === 0) {
-        const primary = await prisma.virtualAccount.create({
-          data: {
-            userId: user.id,
-            bsb: '802-985',
-            accountNumber: Math.floor(10000000 + Math.random() * 90000000).toString(),
-            accountType: 'INDIVIDUAL',
-          },
-        })
-        virtualAccounts = [primary]
-      }
-
       fundingSource = await prisma.fundingSource.findFirst({
         where: { userId: user.id, isDefault: true, isCancelled: false },
       })

@@ -62,6 +62,26 @@ export async function POST(req: Request) {
         throw new Error('User profile record not found in database.')
       }
 
+      if (resolvedType === AccountType.INDIVIDUAL) {
+        const existingPersonal = await tx.virtualAccount.findFirst({
+          where: { userId: user.id, accountType: AccountType.INDIVIDUAL },
+          select: { id: true },
+        })
+        if (existingPersonal) {
+          throw new Error('Personal billing method is already active.')
+        }
+      }
+
+      if (resolvedType === AccountType.HOUSEHOLD) {
+        const existingHousehold = await tx.householdMember.findFirst({
+          where: { userId: user.id },
+          select: { id: true },
+        })
+        if (existingHousehold) {
+          throw new Error('Household billing method is already active.')
+        }
+      }
+
       // Generate a collision-resistant 8-digit Australian account number
       let accountNumber = ''
       let isUnique = false
