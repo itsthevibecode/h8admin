@@ -48,14 +48,16 @@ export function ReferralHub({ embedded = false }: { embedded?: boolean }) {
         <div className="border-b border-gray-100 pb-4">
           <h2 className="text-lg font-bold text-gray-900">Referral link & network</h2>
           <p className="text-xs text-gray-500">
-            Earn $1,000 in fee-free routing volume for every friend who activates an account.
+            Invite friends to H8Admin. Successful activations may earn promotional account credits
+            toward eligible future H8Admin fees.
           </p>
         </div>
       ) : (
         <div className="border-b border-gray-100 pb-4">
-          <h1 className="text-2xl font-bold text-gray-900">Rollover Volume Ledger & Referrals</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Referrals & credits</h1>
           <p className="text-xs text-gray-500">
-            Earn $1,000 in fee-free pass-through routing volume for every friend who activates an account
+            Invite friends to H8Admin. Successful activations may earn promotional account credits
+            toward eligible future H8Admin fees.
           </p>
         </div>
       )}
@@ -69,14 +71,14 @@ export function ReferralHub({ embedded = false }: { embedded?: boolean }) {
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div className="space-y-1">
             <span className="text-xs uppercase tracking-wider text-emerald-300 font-semibold flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-emerald-400" /> Active Rollover Balance
+              <Sparkles className="w-4 h-4 text-emerald-400" /> Promotional credit balance
             </span>
             <p className="text-4xl font-mono font-bold tracking-tight text-white">
               ${balanceDollars}{' '}
               <span className="text-sm font-sans text-emerald-300 font-normal">AUD</span>
             </p>
             <p className="text-xs text-emerald-200/80">
-              Fee-free direct debit volume remaining • Never expires
+              Account credits toward eligible H8Admin fees • Not cash
             </p>
           </div>
 
@@ -85,7 +87,7 @@ export function ReferralHub({ embedded = false }: { embedded?: boolean }) {
               <Users className="w-4 h-4" /> {referralCount} Successful Referrals
             </p>
             <p className="text-white font-bold">
-              ${(referralCount * 1000).toLocaleString()} Total Volume Earned
+              Credits may offset future H8Admin fees
             </p>
           </div>
         </div>
@@ -136,7 +138,7 @@ export function ReferralHub({ embedded = false }: { embedded?: boolean }) {
           <div className="text-center py-6 bg-gray-50/50 rounded-xl border border-dashed border-gray-200 space-y-1">
             <p className="text-xs text-gray-500 font-medium">No referrals logged yet.</p>
             <p className="text-[11px] text-gray-400">
-              Copy your referral link above and share it to instantly earn $1,000 fee-free volume.
+              Copy your referral link above and share it. Credits apply after a friend activates.
             </p>
           </div>
         ) : (
@@ -155,7 +157,7 @@ export function ReferralHub({ embedded = false }: { embedded?: boolean }) {
                   </div>
                 </div>
                 <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-full">
-                  +$1,000 Credited
+                  Credit applied
                 </span>
               </div>
             ))}

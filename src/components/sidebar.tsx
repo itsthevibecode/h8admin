@@ -354,9 +354,9 @@ export function Sidebar({
 
       <div className="space-y-1 border-t border-gray-100 pt-4 text-[11px] text-gray-400">
         <p className="flex items-center gap-1 font-semibold text-emerald-700">
-          <CheckCircle2 className="h-3 w-3 text-emerald-600" /> Tokenized Vault Active
+          <CheckCircle2 className="h-3 w-3 text-emerald-600" /> Personal Financial Autopilot
         </p>
-        <p>Zero-Knowledge Routing Engine</p>
+        <p>Funding sources tokenized via payment partners</p>
       </div>
     </aside>
   )

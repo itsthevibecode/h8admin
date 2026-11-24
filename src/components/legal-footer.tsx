@@ -33,7 +33,7 @@ export function LegalFooter() {
           <p>© 2026 H8Admin Pty Ltd. Registered in Western Australia.</p>
           <p className="inline-flex items-center gap-1.5 text-emerald-800">
             <ShieldCheck className="h-3.5 w-3.5" />
-            Bank data vaulted via PCI-DSS Level 1 tokenization infrastructure.
+            Card details tokenized by payment partners. H8Admin is not a bank or lender.
           </p>
         </div>
       </div>

@@ -102,7 +102,7 @@ export default function JoinHouseholdPage({
             </li>
             <li className="flex gap-2">
               <EyeOff className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-              Personal funding accounts stay zero-knowledge. Card PANs never leave the vault.
+              Personal funding sources stay private to each member. Full card numbers are handled by payment partners, not shared with household partners.
             </li>
             <li className="flex gap-2">
               <Users className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />

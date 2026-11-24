@@ -7,9 +7,9 @@ const geistSans = Geist({ subsets: ['latin'], variable: '--font-geist-sans' })
 const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' })
 
 export const metadata: Metadata = {
-  title: 'H8Admin — Household Finance Dashboard',
+  title: 'H8Admin — Your bills. One permanent payment address.',
   description:
-    'Manage direct debit accounts, routed bills and credit card sign-up bonus timers in one place.',
+    'Personal Financial Autopilot for Australian bills. One permanent payment address while you stay in control of where payments come from.',
   generator: 'v0.app',
   icons: {
     icon: [

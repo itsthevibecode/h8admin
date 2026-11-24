@@ -10,8 +10,8 @@ export function CardPayBanner() {
         </span>
         <p className="text-sm font-bold text-gray-900">One card for these bills</p>
         <p className="text-xs leading-relaxed text-gray-600">
-          A single Visa-style card is on the way, so this billing method can pay billers by card as
-          well as by direct debit.
+          A permanent virtual card number is on the way for card-accepting billers. Not every biller
+          accepts every card network — some may only take direct debit or another method.
         </p>
       </div>
     </div>

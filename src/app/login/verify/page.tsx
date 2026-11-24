@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
-import { BrandPanel } from '@/components/auth/brand-panel'
+import { BrandPanel, MobileBrandIntro } from '@/components/auth/brand-panel'
 import { SecondFactorForm } from '@/components/auth/second-factor-form'
 
 export const metadata: Metadata = {
@@ -13,7 +13,10 @@ export default function VerifySignInPage() {
       <BrandPanel />
       <Suspense fallback={<div className="flex items-center justify-center text-sm text-gray-500">Loading…</div>}>
         <div className="flex items-center justify-center p-6">
-          <SecondFactorForm />
+          <div className="w-full max-w-md">
+            <MobileBrandIntro />
+            <SecondFactorForm />
+          </div>
         </div>
       </Suspense>
     </main>

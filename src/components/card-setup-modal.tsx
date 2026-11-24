@@ -196,7 +196,7 @@ export function CardSetupModal({
           <div>
             <h3 className="text-lg font-bold text-gray-900">Link Funding Source</h3>
             <p className="text-xs text-gray-500">
-              Zero-knowledge tokenization powered by Stripe
+              Card details tokenized by our payment partner
             </p>
           </div>
         </div>

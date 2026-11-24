@@ -70,8 +70,8 @@ export function DirectDebitFunding({ accounts }: { accounts: SavedDirectDebit[] 
         <h1 className="text-2xl font-bold text-gray-900">Direct debit</h1>
         <p className="mt-1 max-w-2xl text-sm text-gray-500">
           Add a bank account H8Admin can debit when you would rather pay a bill from a transaction
-          account than a rewards card. The account number is tokenized with Stripe and is not stored
-          here.
+          account than a rewards card. Account details are handled by our payment partners and are
+          not stored here in full.
         </p>
       </div>
 

@@ -8,11 +8,11 @@ import { REFERRAL_CREDIT_CENTS } from '@/lib/referral'
 const PROMO_CODES: Record<string, { creditCents: number; label: string }> = {
   CHURN10K: {
     creditCents: 1_000_000,
-    label: '$10,000 in fee-free volume',
+    label: '$10,000 promotional account credit',
   },
   VIP0FEE: {
     creditCents: 10_000_000,
-    label: '$100,000 in fee-free volume',
+    label: '$100,000 promotional account credit',
   },
 }
 
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
       select: { id: true },
     })
     const offer = referralOwner
-      ? { creditCents: REFERRAL_CREDIT_CENTS, label: '$1,000 in fee-free volume' }
+      ? { creditCents: REFERRAL_CREDIT_CENTS, label: '$1,000 promotional account credit' }
       : PROMO_CODES[promoCode]
     if (!offer) {
       return NextResponse.json({ error: 'Invalid promo code' }, { status: 400 })

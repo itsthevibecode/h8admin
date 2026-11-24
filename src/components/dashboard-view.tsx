@@ -136,7 +136,7 @@ export function DashboardView({
             >
               {activated
                 ? fundingSource
-                  ? 'Active Intermediary'
+                  ? 'Active'
                   : 'Funding Required'
                 : 'Activation Required'}
             </span>
@@ -187,7 +187,7 @@ export function DashboardView({
                 </span>
                 {fundingSource ? (
                   <span className="flex items-center gap-1 text-emerald-400 font-medium">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Pass-Through Active
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Routing ready
                   </span>
                 ) : (
                   <button
@@ -237,7 +237,7 @@ export function DashboardView({
           <p className="text-2xl font-bold text-gray-900">
             {availableSources.length} Source{availableSources.length === 1 ? '' : 's'}
           </p>
-          <p className="text-xs text-gray-500">Tokenized via Stripe Vault</p>
+          <p className="text-xs text-gray-500">Tokenized via payment partners</p>
         </div>
 
         <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm space-y-2">
