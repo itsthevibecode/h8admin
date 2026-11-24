@@ -7,7 +7,7 @@ import { classifyUtility } from '@/lib/bill-benchmarks'
 import { BillerStatsView, type StatTransaction } from '@/components/biller-stats'
 
 export const metadata: Metadata = {
-  title: 'Billing Stats | H8Admin',
+  title: 'Transaction History | H8Admin',
   description: 'Biller volume over the last six months.',
 }
 

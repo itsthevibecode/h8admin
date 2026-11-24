@@ -89,7 +89,7 @@ export function CardOptimiser({
   return (
     <div className="space-y-8">
       <div className="border-b border-gray-100 pb-4">
-        <h1 className="text-2xl font-bold text-gray-900">Change credit cards</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Find new credit card</h1>
         <p className="mt-1 max-w-3xl text-sm text-gray-500">
           A rewards-card comparison for a new sign-up. Figures are a {REWARDS_SNAPSHOT} snapshot
           from Point Hacks, Finder, Pointrs, Canstar and BankMate. Confirm the live offer on the

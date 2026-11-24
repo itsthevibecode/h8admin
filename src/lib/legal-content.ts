@@ -166,7 +166,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
         heading: 'No Australian financial services licence',
         paragraphs: [
           'H8Admin Pty Ltd does not hold an Australian financial services licence (AFSL). We do not provide personal financial product advice, deal in a financial product on your behalf, or operate a registered managed investment scheme.',
-          'Savings figures on Switch & Save are illustrative benchmarks against published market medians. They are not a quote, a promise of a saving, or a recommendation to switch.',
+          'Savings figures on Find cheaper bills are illustrative benchmarks against published market medians. They are not a quote, a promise of a saving, or a recommendation to switch.',
         ],
       },
       {

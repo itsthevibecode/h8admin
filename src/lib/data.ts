@@ -43,7 +43,7 @@ export const accounts: Account[] = [
   },
   {
     id: 'joint',
-    name: 'Joint Household',
+    name: 'Household',
     description: 'Shared expenses & mortgage',
     accountName: 'A & J Morgan',
     bsb: '802-985',

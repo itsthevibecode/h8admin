@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Gift, Copy, Check, Users, ShieldCheck, Sparkles, TrendingUp } from 'lucide-react'
 
-export function ReferralHub() {
+export function ReferralHub({ embedded = false }: { embedded?: boolean }) {
   const [referralUrl, setReferralUrl] = useState('')
   const [referralCode, setReferralCode] = useState('')
   const [rolloverBalanceCents, setRolloverBalanceCents] = useState(100000)
@@ -43,16 +43,24 @@ export function ReferralHub() {
   const balanceDollars = (rolloverBalanceCents / 100).toFixed(2)
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="border-b border-gray-100 pb-4">
-        <h1 className="text-2xl font-bold text-gray-900">Rollover Volume Ledger & Referrals</h1>
-        <p className="text-xs text-gray-500">
-          Earn $1,000 in fee-free pass-through routing volume for every friend who activates an account
-        </p>
-      </div>
+    <div id={embedded ? 'referrals' : undefined} className="space-y-8">
+      {embedded ? (
+        <div className="border-b border-gray-100 pb-4">
+          <h2 className="text-lg font-bold text-gray-900">Referral link & network</h2>
+          <p className="text-xs text-gray-500">
+            Earn $1,000 in fee-free routing volume for every friend who activates an account.
+          </p>
+        </div>
+      ) : (
+        <div className="border-b border-gray-100 pb-4">
+          <h1 className="text-2xl font-bold text-gray-900">Rollover Volume Ledger & Referrals</h1>
+          <p className="text-xs text-gray-500">
+            Earn $1,000 in fee-free pass-through routing volume for every friend who activates an account
+          </p>
+        </div>
+      )}
 
-      {/* Main Ledger Metric Banner */}
+      {!embedded && (
       <div className="bg-gradient-to-br from-emerald-900 to-emerald-950 text-white rounded-2xl p-6 shadow-xl relative overflow-hidden space-y-6">
         <div className="absolute top-0 right-0 p-8 opacity-10">
           <Gift className="w-48 h-48" />
@@ -82,6 +90,7 @@ export function ReferralHub() {
           </div>
         </div>
       </div>
+      )}
 
       {/* Shareable Link Box */}
       <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm space-y-4">

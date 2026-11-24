@@ -69,7 +69,7 @@ export function BillerStatsView({
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-950 via-emerald-900 to-emerald-800 p-8 text-white shadow-xl">
         <BarChart3 className="absolute right-8 top-8 h-32 w-32 text-white/10" />
         <div className="relative z-10 max-w-2xl space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-wider text-emerald-300">Billing stats</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-emerald-300">Transaction history</p>
           <p className="font-mono text-5xl font-extrabold tracking-tight">{formatAudCents(stats.totalCents)}</p>
           <p className="text-sm text-emerald-100/90">
             Successful direct debits across {stats.billers.length}{' '}

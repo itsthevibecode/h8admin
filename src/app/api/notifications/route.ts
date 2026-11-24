@@ -3,6 +3,7 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NotificationType } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
+import { allowsNotification } from '@/lib/notification-prefs'
 
 async function getAuthenticatedUser() {
   const cookieStore = await cookies()
@@ -131,7 +132,7 @@ async function generateConciergeAlerts(userId: string) {
   })
 
   const toCreate = [...bonusCreates, ...lockoutCreates]
-  if (toCreate.length > 0) {
+  if (toCreate.length > 0 && (await allowsNotification(userId, 'rewards'))) {
     await prisma.notification.createMany({ data: toCreate })
   }
 }

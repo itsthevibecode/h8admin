@@ -3,6 +3,7 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { prisma } from '@/lib/prisma'
 import { getStripe, retrieveOwnedPaymentMethod } from '@/lib/stripe'
+import { creditReferrerOnce } from '@/lib/referral'
 
 export async function POST(req: Request) {
   const cookieStore = await cookies()
@@ -97,11 +98,8 @@ export async function POST(req: Request) {
       },
     })
 
-    if (lifetimeCount === 0 && dbUser.referredById) {
-      await prisma.user.update({
-        where: { id: dbUser.referredById },
-        data: { rolloverBalanceCents: { increment: 100000 } },
-      })
+    if (lifetimeCount === 0) {
+      await creditReferrerOnce(prisma, user.id)
     }
 
     return NextResponse.json({ success: true, card })

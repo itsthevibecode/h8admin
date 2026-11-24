@@ -7,6 +7,7 @@ import {
   allocateUniqueReferralCode,
   needsShortReferralCode,
 } from '@/lib/referral'
+import { isAllowlisted } from '@/lib/beta-access'
 
 export async function POST(req: Request) {
   const cookieStore = await cookies()
@@ -58,6 +59,12 @@ export async function POST(req: Request) {
       where: { id: user.id },
       select: { id: true, referralCode: true },
     })
+    if (!existingUser && (!user.email || !(await isAllowlisted(user.email)))) {
+      return NextResponse.json(
+        { error: 'This email is not on the private beta list.' },
+        { status: 403 }
+      )
+    }
     const referralCode = needsShortReferralCode(existingUser?.referralCode)
       ? await allocateUniqueReferralCode()
       : existingUser!.referralCode
@@ -70,7 +77,6 @@ export async function POST(req: Request) {
       create: {
         id: user.id,
         email: user.email || `${user.id}@h8admin.local`,
-        name: user.email?.split('@')[0] || 'Partner',
         referralCode,
       },
     })

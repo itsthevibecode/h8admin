@@ -1,6 +1,8 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
+import { isAllowlisted } from '@/lib/beta-access'
 import { DashboardView } from '@/components/dashboard-view'
 import {
   allocateUniqueReferralCode,
@@ -30,11 +32,13 @@ export default async function DashboardPage() {
     id: string
     bsb: string
     accountNumber: string
+    displayName: string | null
     accountType: 'INDIVIDUAL' | 'HOUSEHOLD' | 'INVESTMENT'
     householdId?: string | null
   }[] = []
   let fundingSource = null
   let allFundingSources: { id: string; brand: string; last4: string }[] = []
+  let hasBillerRule = false
   let transactions: {
     id: string
     billerName: string
@@ -51,6 +55,11 @@ export default async function DashboardPage() {
         where: { id: user.id },
         select: { referredById: true, referralCode: true },
       })
+
+      if (!existingUser && (!user.email || !(await isAllowlisted(user.email)))) {
+        await supabase.auth.signOut()
+        redirect('/login?error=closed-beta')
+      }
 
       let referredById: string | undefined
       if (refCode && !existingUser?.referredById) {
@@ -77,7 +86,6 @@ export default async function DashboardPage() {
         create: {
           id: user.id,
           email: user.email!,
-          name: user.email?.split('@')[0] || 'User',
           referralCode,
           ...(referredById ? { referredById } : {}),
         },
@@ -85,7 +93,14 @@ export default async function DashboardPage() {
 
       const ownedAccounts = await prisma.virtualAccount.findMany({
         where: { userId: user.id },
-        select: { id: true, bsb: true, accountNumber: true, accountType: true, householdId: true },
+        select: {
+          id: true,
+          bsb: true,
+          accountNumber: true,
+          displayName: true,
+          accountType: true,
+          householdId: true,
+        },
         orderBy: { createdAt: 'asc' },
       })
 
@@ -99,6 +114,7 @@ export default async function DashboardPage() {
                   id: true,
                   bsb: true,
                   accountNumber: true,
+                  displayName: true,
                   accountType: true,
                   householdId: true,
                 },
@@ -138,6 +154,15 @@ export default async function DashboardPage() {
         select: { id: true, brand: true, last4: true },
       })
 
+      const billerRuleCount = await prisma.routingRule.count({
+        where: {
+          userId: user.id,
+          isActive: true,
+          ruleType: 'BILLER_OVERRIDE',
+        },
+      })
+      hasBillerRule = billerRuleCount > 0
+
       const rawTx = await prisma.transaction.findMany({
         where: { userId: user.id },
         include: { fundingSource: { select: { brand: true, last4: true } } },
@@ -160,6 +185,7 @@ export default async function DashboardPage() {
       virtualAccounts={virtualAccounts}
       fundingSource={fundingSource}
       allFundingSources={allFundingSources}
+      hasBillerRule={hasBillerRule}
       transactions={transactions}
     />
   )

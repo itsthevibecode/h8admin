@@ -40,6 +40,23 @@ export async function resolveFundingSource(
     }
   }
 
+  const defaultCard = await prisma.fundingSource.findFirst({
+    where: {
+      userId,
+      isCancelled: false,
+      isDefault: true,
+    },
+    orderBy: { createdAt: 'desc' },
+  })
+
+  if (defaultCard) {
+    return {
+      fundingSource: defaultCard,
+      matchedRule: null,
+      resolutionReason: 'DEFAULT',
+    }
+  }
+
   const churnCard = await prisma.fundingSource.findFirst({
     where: {
       userId,
@@ -55,23 +72,6 @@ export async function resolveFundingSource(
       fundingSource: churnCard,
       matchedRule: null,
       resolutionReason: 'CHURN_TIMER',
-    }
-  }
-
-  const defaultCard = await prisma.fundingSource.findFirst({
-    where: {
-      userId,
-      isCancelled: false,
-      isDefault: true,
-    },
-    orderBy: { createdAt: 'desc' },
-  })
-
-  if (defaultCard) {
-    return {
-      fundingSource: defaultCard,
-      matchedRule: null,
-      resolutionReason: 'DEFAULT',
     }
   }
 

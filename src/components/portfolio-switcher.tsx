@@ -11,6 +11,7 @@ interface VirtualAccount {
   accountType: AccountType
   bsb: string
   accountNumber: string
+  displayName?: string | null
   householdId?: string | null
 }
 
@@ -34,14 +35,14 @@ const PORTFOLIOS: {
   },
   {
     type: AccountType.HOUSEHOLD,
-    label: 'Joint Household',
-    spinUpLabel: 'Spin up Household BSB',
+    label: 'Household',
+    spinUpLabel: 'Set up Household',
     icon: Home,
   },
   {
     type: AccountType.INVESTMENT,
     label: 'Investment Property',
-    spinUpLabel: 'Spin up Investment BSB',
+    spinUpLabel: 'Set up Investment property',
     icon: Building2,
   },
 ]
@@ -92,6 +93,22 @@ export function PortfolioSwitcher({
             )
             const Icon = portfolio.icon
             if (existing.length === 0) {
+              if (portfolio.type !== AccountType.INDIVIDUAL) {
+                const href =
+                  portfolio.type === AccountType.HOUSEHOLD
+                    ? '/direct-debits/household'
+                    : '/direct-debits/investment'
+                return (
+                  <Link
+                    key={portfolio.type}
+                    href={href}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold border border-dashed border-emerald-300 text-emerald-700 bg-emerald-50/70 hover:bg-emerald-50"
+                  >
+                    <Plus className="w-4 h-4" />
+                    {portfolio.spinUpLabel}
+                  </Link>
+                )
+              }
               return (
                 <button
                   key={portfolio.type}
@@ -117,10 +134,10 @@ export function PortfolioSwitcher({
               >
                 <Icon className="w-4 h-4" />
                 <span>
-                  {portfolio.label}
-                  {portfolio.type === AccountType.INVESTMENT && existing.length > 1
-                    ? ` (••${account.accountNumber.slice(-4)})`
-                    : ''}
+                  {account.displayName?.trim() ||
+                    (portfolio.type === AccountType.INVESTMENT && existing.length > 1
+                      ? `${portfolio.label} (••${account.accountNumber.slice(-4)})`
+                      : portfolio.label)}
                 </span>
               </button>
             ))
@@ -129,7 +146,7 @@ export function PortfolioSwitcher({
 
         {isHouseholdActive(virtualAccounts, activeAccountId) && (
           <Link
-            href="/household"
+            href="/direct-debits/household"
             className="flex items-center gap-1.5 px-3 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-xl text-xs font-semibold"
           >
             <Users className="w-4 h-4" /> Manage household

@@ -17,6 +17,15 @@ import {
   X,
 } from 'lucide-react'
 
+function formatAuDate(value: string | Date) {
+  return new Date(value).toLocaleDateString('en-AU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    timeZone: 'Australia/Sydney',
+  })
+}
+
 interface ActiveCard {
   id: string
   brand: string
@@ -55,6 +64,12 @@ export function CreditCardsDashboard({
     new Date().toISOString().split('T')[0]
   )
   const [submitting, setSubmitting] = useState(false)
+  const [loggingCancelled, setLoggingCancelled] = useState(false)
+  const [historyBank, setHistoryBank] = useState(AUSTRALIAN_BANK_POLICIES[0].bankGroup)
+  const [historyCard, setHistoryCard] = useState(AUSTRALIAN_BANK_POLICIES[0].cards[0])
+  const [historyNickname, setHistoryNickname] = useState('')
+  const [historyDate, setHistoryDate] = useState(new Date().toISOString().split('T')[0])
+  const [historyError, setHistoryError] = useState('')
 
   const [editNickname, setEditNickname] = useState('')
   const [editBankGroup, setEditBankGroup] = useState(AUSTRALIAN_BANK_POLICIES[0].bankGroup)
@@ -75,6 +90,38 @@ export function CreditCardsDashboard({
   const selectedPolicy = AUSTRALIAN_BANK_POLICIES.find(
     (b) => b.bankGroup === editBankGroup
   )
+  const historyPolicy = AUSTRALIAN_BANK_POLICIES.find((b) => b.bankGroup === historyBank)
+
+  const handleLogCancelled = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSubmitting(true)
+    setHistoryError('')
+    try {
+      const res = await fetch('/api/cards/lockout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bankGroup: historyBank,
+          cardName: historyCard,
+          nickname: historyNickname,
+          cancelledAtDate: historyDate,
+        }),
+      })
+      if (!res.ok) {
+        const data = (await res.json()) as { error?: string }
+        setHistoryError(data.error || 'Could not save this cancelled card')
+        return
+      }
+      setHistoryNickname('')
+      setLoggingCancelled(false)
+      router.refresh()
+    } catch (err) {
+      console.error(err)
+      setHistoryError('Could not save this cancelled card')
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   const handleCancelCard = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -187,81 +234,68 @@ export function CreditCardsDashboard({
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-3">
             {activeCards.map((card) => {
               const daysLeft = getDaysRemaining(card.bonusDeadline)
 
               return (
                 <div
                   key={card.id}
-                  className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm space-y-4 relative"
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-100 bg-white p-4 text-xs shadow-sm"
                 >
-                  <div className="flex justify-between items-start">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-xl bg-emerald-50 p-2.5 text-emerald-700">
+                      <CreditCard className="h-5 w-5" />
+                    </div>
                     <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-gray-900 text-sm">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-bold text-gray-900">
                           {card.nickname || card.cardName || `${card.brand} (••${card.last4})`}
                         </span>
                         {card.isDefault && (
-                          <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-full">
+                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
                             DEFAULT
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        {card.bankGroup || 'Tokenized Card'} • {card.brand} ••{card.last4}
+                      <p className="mt-0.5 text-xs text-gray-500">
+                        {card.bankGroup || 'Tokenized card'} • {card.brand} ••{card.last4}
                       </p>
                     </div>
+                  </div>
 
+                  <div className="flex flex-wrap items-center gap-4">
+                    <div>
+                      <p className="flex items-center gap-1 text-[10px] font-semibold uppercase text-gray-400">
+                        <Target className="h-3 w-3 text-emerald-600" /> Target spend
+                      </p>
+                      <p className="font-bold text-gray-900">
+                        ${card.spendTarget ? card.spendTarget.toLocaleString() : '3,000'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="flex items-center gap-1 text-[10px] font-semibold uppercase text-gray-400">
+                        <Clock className="h-3 w-3 text-amber-500" /> Rewards period
+                      </p>
+                      <p className="font-bold text-amber-700">
+                        {daysLeft !== null ? `${daysLeft} days left` : '90 day target'}
+                      </p>
+                    </div>
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => openEditModal(card)}
-                        className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-50 transition"
-                        title="Edit Card Details"
+                        className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-50 hover:text-gray-600"
+                        title="Edit card details"
                       >
-                        <Edit2 className="w-4 h-4" />
+                        <Edit2 className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => setCancellingCardId(card.id)}
-                        className="p-1.5 text-red-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition"
-                        title="Cancel Card & Start Lockout Timer"
+                        className="flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-100"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="h-3.5 w-3.5" /> Cancel card
                       </button>
                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 p-3 bg-gray-50 rounded-xl text-xs">
-                    <div>
-                      <span className="text-[10px] text-gray-400 uppercase font-semibold flex items-center gap-1">
-                        <Target className="w-3 h-3 text-emerald-600" /> Target Spend
-                      </span>
-                      <p className="font-bold text-gray-900 mt-0.5">
-                        ${card.spendTarget ? card.spendTarget.toLocaleString() : '3,000'} Goal
-                      </p>
-                      <p className="text-[10px] text-gray-400">Tracked by user</p>
-                    </div>
-
-                    <div>
-                      <span className="text-[10px] text-gray-400 uppercase font-semibold flex items-center gap-1">
-                        <Clock className="w-3 h-3 text-amber-500" /> Rewards Period
-                      </span>
-                      {daysLeft !== null ? (
-                        <p className="font-bold text-amber-700 mt-0.5">{daysLeft} Days Left</p>
-                      ) : (
-                        <p className="font-bold text-gray-700 mt-0.5">90 Days Target</p>
-                      )}
-                      <p className="text-[10px] text-gray-400">Minimum spend window</p>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end pt-1">
-                    <button
-                      onClick={() => setCancellingCardId(card.id)}
-                      className="px-3 py-1.5 bg-red-50 text-red-700 hover:bg-red-100 rounded-lg text-xs font-semibold transition flex items-center gap-1.5"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" /> Cancel Card
-                    </button>
                   </div>
                 </div>
               )
@@ -271,18 +305,101 @@ export function CreditCardsDashboard({
       </div>
 
       <div id="cancelled" className="space-y-4 pt-4 border-t border-gray-100">
-        <div className="flex items-center gap-2">
-          <Clock className="w-5 h-5 text-amber-600" />
-          <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
-            Cancelled & Expired Cards ({lockouts.length})
-          </h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Clock className="w-5 h-5 text-amber-600" />
+            <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
+              Cancelled & Expired Cards ({lockouts.length})
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => setLoggingCancelled((open) => !open)}
+            className="flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 transition hover:bg-amber-100"
+          >
+            <Plus className="h-4 w-4" />
+            {loggingCancelled ? 'Close' : 'Add cancelled card'}
+          </button>
         </div>
+
+        {loggingCancelled && (
+          <form
+            onSubmit={handleLogCancelled}
+            className="space-y-4 rounded-2xl border border-amber-100 bg-amber-50/60 p-4"
+          >
+            <p className="text-xs text-amber-950">
+              Already churned this card somewhere else? Log it here so the exclusion clock starts from the date you cancelled it.
+            </p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-gray-700">Bank issuer</label>
+                <select
+                  value={historyBank}
+                  onChange={(e) => {
+                    setHistoryBank(e.target.value)
+                    const policy = AUSTRALIAN_BANK_POLICIES.find((p) => p.bankGroup === e.target.value)
+                    if (policy) setHistoryCard(policy.cards[0])
+                  }}
+                  className="w-full rounded-lg border border-gray-300 bg-white p-2.5 text-xs"
+                >
+                  {AUSTRALIAN_BANK_POLICIES.map((policy) => (
+                    <option key={policy.bankGroup} value={policy.bankGroup}>
+                      {policy.bankGroup} ({policy.lockoutMonths}m exclusion)
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-gray-700">Card product</label>
+                <select
+                  value={historyCard}
+                  onChange={(e) => setHistoryCard(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 bg-white p-2.5 text-xs"
+                >
+                  {historyPolicy?.cards.map((card) => (
+                    <option key={card} value={card}>
+                      {card}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-gray-700">Nickname</label>
+                <input
+                  type="text"
+                  value={historyNickname}
+                  onChange={(e) => setHistoryNickname(e.target.value)}
+                  placeholder="Optional"
+                  className="w-full rounded-lg border border-gray-300 bg-white p-2.5 text-xs"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-gray-700">Cancellation date</label>
+                <input
+                  type="date"
+                  value={historyDate}
+                  onChange={(e) => setHistoryDate(e.target.value)}
+                  required
+                  className="w-full rounded-lg border border-gray-300 bg-white p-2.5 text-xs"
+                />
+              </div>
+            </div>
+            {historyError && <p className="text-xs font-semibold text-red-700">{historyError}</p>}
+            <button
+              type="submit"
+              disabled={submitting}
+              className="rounded-lg bg-amber-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-amber-700 disabled:opacity-50"
+            >
+              {submitting ? 'Saving…' : 'Start exclusion clock'}
+            </button>
+          </form>
+        )}
 
         {lockouts.length === 0 ? (
           <div className="p-6 text-center bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
             <p className="text-xs text-gray-500 font-medium">No cancelled cards logged yet.</p>
             <p className="text-[11px] text-gray-400">
-              When you cancel an active credit card, click &quot;Cancel Card&quot; above to automatically initiate the 12-24 month bank exclusion clock.
+              Cancel a linked card, or add one you already closed, to start its exclusion clock.
             </p>
           </div>
         ) : (
@@ -325,7 +442,7 @@ export function CreditCardsDashboard({
                         </span>
                       </div>
                       <p className="text-gray-500 text-xs mt-0.5">
-                        Cancelled on {new Date(item.cancelledAt).toLocaleDateString()} • Policy:{' '}
+                        Cancelled on {formatAuDate(item.cancelledAt)} • Policy:{' '}
                         {item.lockoutMonths} Months
                       </p>
                     </div>
@@ -342,7 +459,7 @@ export function CreditCardsDashboard({
                           {diffDays} Days Remaining
                         </p>
                         <p className="text-[10px] text-gray-400">
-                          Re-eligible on {eligibleDate.toLocaleDateString()}
+                          Re-eligible on {formatAuDate(eligibleDate)}
                         </p>
                       </div>
                     )}
@@ -472,7 +589,7 @@ export function CreditCardsDashboard({
             </div>
 
             <p className="text-xs text-gray-600">
-              Cancelling this card will move it to your **Cancelled & Expired Cards** section and initiate the exact exclusion clock for future sign-up bonus eligibility.
+              Cancelling this card moves it into Cancelled & Expired Cards and starts the exclusion clock for the next sign-up bonus.
             </p>
 
             <form onSubmit={handleCancelCard} className="space-y-4">

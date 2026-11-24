@@ -1,7 +1,10 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { LegalFooter } from '@/components/legal-footer'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
+import { DashboardFrame } from '@/components/dashboard-frame'
+import { prisma } from '@/lib/prisma'
+import { legalName } from '@/lib/legal-name'
 import { getLegalDocument, LEGAL_DOCUMENTS } from '@/lib/legal-content'
 
 export function generateStaticParams() {
@@ -37,20 +40,32 @@ export default async function LegalDocumentPage({
     notFound()
   }
 
-  return (
-    <div className="min-h-screen bg-white text-slate-800">
-      <header className="border-b border-slate-200">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-5">
-          <Link href="/" className="text-sm font-bold text-emerald-800">
-            H8Admin
-          </Link>
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-            Legal
-          </span>
-        </div>
-      </header>
+  const cookieStore = await cookies()
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll()
+        },
+      },
+    }
+  )
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-      <article className="mx-auto max-w-3xl space-y-8 px-6 py-10">
+  const profile = user
+    ? await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { firstName: true, lastName: true },
+      })
+    : null
+
+  return (
+    <DashboardFrame email={user?.email || ''} displayName={profile ? legalName(profile) ?? '' : ''}>
+      <article className="mx-auto max-w-3xl space-y-8 px-8 py-10">
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-800">
@@ -75,8 +90,6 @@ export default async function LegalDocumentPage({
           ))}
         </div>
       </article>
-
-      <LegalFooter />
-    </div>
+    </DashboardFrame>
   )
 }

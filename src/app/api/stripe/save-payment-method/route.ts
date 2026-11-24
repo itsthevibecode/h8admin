@@ -3,6 +3,8 @@ import Stripe from 'stripe'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { prisma } from '@/lib/prisma'
+import { creditReferrerOnce } from '@/lib/referral'
+import { getOrCreateStripeCustomer } from '@/lib/stripe'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
@@ -38,21 +40,7 @@ export async function POST(req: Request) {
       )
     }
 
-    // 1. Resolve or create user's Stripe Customer
-    const customerList = await stripe.customers.list({
-      email: user.email,
-      limit: 1,
-    })
-
-    let customerId = customerList.data[0]?.id
-
-    if (!customerId) {
-      const newCustomer = await stripe.customers.create({
-        email: user.email,
-        metadata: { userId: user.id },
-      })
-      customerId = newCustomer.id
-    }
+    const customerId = await getOrCreateStripeCustomer(stripe, user)
 
     // 2. Fetch PaymentMethod from Stripe
     const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId)
@@ -117,21 +105,8 @@ export async function POST(req: Request) {
         },
       })
 
-      // Attribution Handshake: If first card, credit referrer with +$1,000 volume
       if (existingCardsCount === 0) {
-        const currentUser = await tx.user.findUnique({
-          where: { id: user.id },
-          select: { referredById: true },
-        })
-
-        if (currentUser?.referredById) {
-          await tx.user.update({
-            where: { id: currentUser.referredById },
-            data: {
-              rolloverBalanceCents: { increment: 100000 },
-            },
-          })
-        }
+        await creditReferrerOnce(tx, user.id)
       }
 
       return fundingSource

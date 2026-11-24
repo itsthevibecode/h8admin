@@ -68,7 +68,7 @@ export default async function CardsPage() {
   }
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
+    <div className="p-8">
       <CreditCardsDashboard activeCards={activeCards} lockouts={lockouts} />
     </div>
   )

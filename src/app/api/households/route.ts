@@ -3,6 +3,7 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { Role } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
+import { cleanBillingName } from '@/lib/billing-name'
 
 async function getAuthenticatedUser() {
   const cookieStore = await cookies()
@@ -65,6 +66,7 @@ export async function GET() {
         household: null,
         role: null,
         sharePersonalBills: false,
+        transactions: [],
       })
     }
 
@@ -77,10 +79,28 @@ export async function GET() {
       },
     })
 
+    const accountIds = membership.household.virtualAccounts.map((account) => account.id)
+    const transactions =
+      accountIds.length === 0
+        ? []
+        : await prisma.transaction.findMany({
+            where: { virtualAccountId: { in: accountIds } },
+            orderBy: { createdAt: 'desc' },
+            take: 24,
+            select: {
+              id: true,
+              billerName: true,
+              amountCents: true,
+              status: true,
+              createdAt: true,
+            },
+          })
+
     return NextResponse.json({
       household: membership.household,
       role: membership.role,
       sharePersonalBills: visibility?.sharePersonalBills ?? false,
+      transactions,
     })
   } catch (err: unknown) {
     const error = err as Error
@@ -125,9 +145,16 @@ export async function PATCH(req: Request) {
           { status: 403 }
         )
       }
+      const name = cleanBillingName(body.name)
+      if (!name) {
+        return NextResponse.json(
+          { error: 'Use a name up to 40 characters. Symbols such as / ? ! @ # $ % & * ( ) are allowed.' },
+          { status: 400 }
+        )
+      }
       await prisma.household.update({
         where: { id: body.householdId },
-        data: { name: body.name.trim() },
+        data: { name },
       })
     }
 

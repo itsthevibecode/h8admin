@@ -86,7 +86,7 @@ export default function JoinHouseholdPage({
           </p>
           <h1 className="text-2xl font-bold text-gray-900">Joint Financial Autopilot</h1>
           <p className="text-sm text-gray-500">
-            You have been invited to share a Joint Household Virtual BSB — without exposing
+            You have been invited to share a Household Virtual BSB — without exposing
             each other&apos;s underlying funding cards.
           </p>
         </div>

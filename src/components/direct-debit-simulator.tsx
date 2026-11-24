@@ -49,7 +49,7 @@ export function DirectDebitSimulator() {
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm space-y-6">
+    <div id="simulator" className="scroll-mt-6 bg-white rounded-2xl border border-gray-100 p-6 shadow-sm space-y-6">
       <div className="flex items-center gap-3 border-b border-gray-100 pb-4">
         <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl">
           <Activity className="w-5 h-5" />

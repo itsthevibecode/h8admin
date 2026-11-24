@@ -81,8 +81,15 @@ export const BILL_BENCHMARKS: CategoryBenchmark[] = [
   },
 ]
 
+export type UtilityCategory = SavingsCategory | 'OTHER'
+
+export function classifyUtility(billerName: string): UtilityCategory {
+  const match = BILL_BENCHMARKS.find((benchmark) => benchmark.matcher.test(billerName))
+  return match?.category ?? 'OTHER'
+}
+
 const QUARTERLY_ENERGY_THRESHOLD_DOLLARS = 250
-const CTA_LABEL = 'Switch & Save via Partner'
+const CTA_LABEL = 'Compare via partner'
 
 function roundDollars(value: number) {
   return Math.round(value * 100) / 100

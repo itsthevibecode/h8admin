@@ -3,6 +3,7 @@ import Stripe from 'stripe'
 import { NotificationType } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { getStripe } from '@/lib/stripe'
+import { allowsNotification } from '@/lib/notification-prefs'
 
 function formatInvoiceAmount(invoice: Stripe.Invoice) {
   const cents = invoice.amount_paid || invoice.amount_due || 0
@@ -82,13 +83,17 @@ export async function POST(req: Request) {
     const amountLabel = formatInvoiceAmount(invoice)
     const invoiceRef = invoice.number || invoice.id
 
+    if (!(await allowsNotification(user.id, 'billing'))) {
+      return NextResponse.json({ received: true, muted: true })
+    }
+
     if (event.type === 'invoice.payment_succeeded') {
       await prisma.notification.create({
         data: {
           userId: user.id,
           type: NotificationType.SYSTEM,
           isRead: false,
-          link: '/billing',
+          link: '/',
           title: 'Invoice settled',
           message: `H8Admin billed ${amountLabel} (${invoiceRef}). Your monthly routing subscription is current.`,
         },
@@ -99,9 +104,9 @@ export async function POST(req: Request) {
           userId: user.id,
           type: NotificationType.TRANSACTION_FAILED,
           isRead: false,
-          link: '/billing',
+          link: '/',
           title: 'Invoice payment failed',
-          message: `We could not collect ${amountLabel} for invoice ${invoiceRef}. Update your payment method in Billing to keep routing active.`,
+          message: `We could not collect ${amountLabel} for invoice ${invoiceRef}. Update the card on file to keep routing active.`,
         },
       })
     }

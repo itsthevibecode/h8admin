@@ -9,12 +9,14 @@ import { PortfolioSwitcher } from '@/components/portfolio-switcher'
 import { PointsChurnerTracker } from '@/components/points-churner-tracker'
 import { OnboardingStepper } from '@/components/onboarding-stepper'
 import { useToast } from '@/components/ui/toast'
+import { BillingHub } from '@/components/billing-hub'
 import { ShieldCheck, ArrowUpRight, Plus, CreditCard, Landmark, CheckCircle2, Copy } from 'lucide-react'
 
 interface VirtualAccount {
   id: string
   bsb: string
   accountNumber: string
+  displayName?: string | null
   accountType: 'INDIVIDUAL' | 'HOUSEHOLD' | 'INVESTMENT'
   householdId?: string | null
 }
@@ -189,6 +191,8 @@ export function DashboardView({
           </div>
         </div>
       </div>
+
+      <BillingHub />
 
       {/* Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

@@ -26,6 +26,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  // Preserve narrowed string type across async closure boundaries
+  const userEmail = user.email
+
   try {
     const body = await req.json().catch(() => ({}))
     const { accountType, portfolioName } = body
@@ -50,7 +53,7 @@ export async function POST(req: Request) {
 
     // 2. Atomic Provisioning Transaction
     const virtualAccount = await prisma.$transaction(async (tx) => {
-      // Ensure user record exists in PostgreSQL to satisfy foreign key constraints
+      // Ensure user profile record exists in PostgreSQL to satisfy foreign key constraints
       const dbUser = await tx.user.findUnique({
         where: { id: user.id },
       })
@@ -89,48 +92,23 @@ export async function POST(req: Request) {
       // Provision Household entity and assign OWNER role if creating a HOUSEHOLD portfolio
       let householdId: string | null = null
       if (resolvedType === AccountType.HOUSEHOLD) {
-        const existingMembership = await tx.householdMember.findFirst({
-          where: { userId: user.id },
-        })
+        const sanitizedName =
+          typeof portfolioName === 'string' && portfolioName.trim()
+            ? portfolioName.trim()
+            : `${userEmail.split('@')[0]}'s Household`
 
-        if (existingMembership) {
-          householdId = existingMembership.householdId
-          const existingHouseholdAccount = await tx.virtualAccount.findFirst({
-            where: {
-              householdId,
-              accountType: AccountType.HOUSEHOLD,
-            },
-          })
-          if (existingHouseholdAccount) {
-            return existingHouseholdAccount
-          }
-        } else {
-          const sanitizedName =
-            typeof portfolioName === 'string' && portfolioName.trim()
-              ? portfolioName.trim()
-              : `${user.email.split('@')[0]}'s Household`
-
-          const household = await tx.household.create({
-            data: {
-              name: sanitizedName,
-              members: {
-                create: {
-                  userId: user.id,
-                  role: Role.OWNER,
-                },
+        const household = await tx.household.create({
+          data: {
+            name: sanitizedName,
+            members: {
+              create: {
+                userId: user.id,
+                role: Role.OWNER,
               },
             },
-          })
-          householdId = household.id
-
-          await tx.householdVisibility.create({
-            data: {
-              userId: user.id,
-              householdId,
-              sharePersonalBills: false,
-            },
-          })
-        }
+          },
+        })
+        householdId = household.id
       }
 
       // Provision the new Virtual Account

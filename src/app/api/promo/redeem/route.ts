@@ -3,6 +3,7 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
+import { REFERRAL_CREDIT_CENTS } from '@/lib/referral'
 
 const PROMO_CODES: Record<string, { creditCents: number; label: string }> = {
   CHURN10K: {
@@ -46,14 +47,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Promo code is required' }, { status: 400 })
     }
 
-    const offer = PROMO_CODES[promoCode]
+    const referralOwner = await prisma.user.findUnique({
+      where: { referralCode: promoCode },
+      select: { id: true },
+    })
+    const offer = referralOwner
+      ? { creditCents: REFERRAL_CREDIT_CENTS, label: '$1,000 in fee-free volume' }
+      : PROMO_CODES[promoCode]
     if (!offer) {
       return NextResponse.json({ error: 'Invalid promo code' }, { status: 400 })
+    }
+    if (referralOwner?.id === user.id) {
+      return NextResponse.json({ error: 'You cannot redeem your own referral code' }, { status: 400 })
     }
 
     const dbUser = await prisma.user.findUnique({
       where: { id: user.id },
-      select: { id: true, rolloverBalanceCents: true },
+      select: { id: true, rolloverBalanceCents: true, referredById: true },
     })
 
     if (!dbUser) {
@@ -89,6 +99,7 @@ export async function POST(req: Request) {
         where: { id: user.id },
         data: {
           rolloverBalanceCents: { increment: offer.creditCents },
+          ...(referralOwner && !dbUser.referredById ? { referredById: referralOwner.id } : {}),
         },
         select: { rolloverBalanceCents: true },
       })

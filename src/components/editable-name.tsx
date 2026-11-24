@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Check, Pencil, X } from 'lucide-react'
+import { cleanBillingName } from '@/lib/billing-name'
 
 function cleanDraft(value: string) {
   return value.trim().replace(/\s+/g, ' ').slice(0, 40)
@@ -35,9 +36,9 @@ export function EditableName({
   }
 
   const save = async () => {
-    const next = cleanDraft(draft)
-    if (next && !/^[\p{L}\p{N}][\p{L}\p{N} '&.,-]*$/u.test(next)) {
-      setError('Use letters, numbers, and simple punctuation.')
+    const next = cleanBillingName(cleanDraft(draft))
+    if (next === undefined) {
+      setError('Use letters, numbers, and symbols such as / ? ! @ # $ % & * ( ).')
       return
     }
     setSaving(true)

@@ -1,18 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import {
-  AlertCircle,
-  CheckCircle2,
-  Gift,
-  Info,
-  Loader2,
-  Receipt,
-  Sparkles,
-  Wallet,
-} from 'lucide-react'
-
-type TransactionStatus = 'SUCCESS' | 'DECLINED' | 'FAILED'
+import { AlertCircle, Gift, Info, Loader2 } from 'lucide-react'
 
 interface BillingMetrics {
   monthlyVolumeCents: number
@@ -30,15 +19,6 @@ interface BillingMetrics {
   cycleEndDate: string
 }
 
-interface RecentTransaction {
-  id: string
-  billerName: string
-  amountCents: number
-  feeWaived: boolean
-  status: TransactionStatus
-  createdAt: string
-}
-
 function formatAudCents(cents: number) {
   return (cents / 100).toLocaleString('en-AU', {
     style: 'currency',
@@ -54,10 +34,8 @@ function formatCycleDay(iso: string) {
 
 export function BillingHub() {
   const [loading, setLoading] = useState(true)
-  const [portalLoading, setPortalLoading] = useState(false)
   const [error, setError] = useState('')
   const [metrics, setMetrics] = useState<BillingMetrics | null>(null)
-  const [recentTransactions, setRecentTransactions] = useState<RecentTransaction[]>([])
 
   useEffect(() => {
     let cancelled = false
@@ -66,7 +44,6 @@ export function BillingHub() {
         const res = await fetch('/api/billing')
         const data = (await res.json()) as {
           metrics?: BillingMetrics
-          recentTransactions?: RecentTransaction[]
           error?: string
         }
         if (!res.ok || !data.metrics) {
@@ -74,7 +51,6 @@ export function BillingHub() {
         }
         if (!cancelled) {
           setMetrics(data.metrics)
-          setRecentTransactions(data.recentTransactions ?? [])
         }
       } catch (err: unknown) {
         if (!cancelled) setError((err as Error).message)
@@ -86,22 +62,6 @@ export function BillingHub() {
       cancelled = true
     }
   }, [])
-
-  const openPortal = async () => {
-    setPortalLoading(true)
-    setError('')
-    try {
-      const res = await fetch('/api/billing', { method: 'POST' })
-      const data = (await res.json()) as { url?: string; error?: string }
-      if (!res.ok || !data.url) {
-        throw new Error(data.error || 'Could not open Stripe billing portal')
-      }
-      window.location.assign(data.url)
-    } catch (err: unknown) {
-      setError((err as Error).message)
-      setPortalLoading(false)
-    }
-  }
 
   if (loading) {
     return (
@@ -119,30 +79,16 @@ export function BillingHub() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-700">
-            SaaS metering
-          </p>
-          <h1 className="text-2xl font-bold text-gray-900">Billing & Subscription</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {metrics
-              ? `${formatCycleDay(metrics.cycleStartDate)} – ${formatCycleDay(metrics.cycleEndDate)} cycle`
-              : 'Current calendar month'}
-          </p>
-        </div>
-        <button
-          onClick={() => void openPortal()}
-          disabled={portalLoading}
-          className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold disabled:opacity-50"
-        >
-          {portalLoading ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <Wallet className="w-4 h-4" />
-          )}
-          Manage Payment Methods & Invoices
-        </button>
+      <div>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-700">
+          Routing fees
+        </p>
+        <h2 className="text-lg font-bold text-gray-900">This month</h2>
+        <p className="mt-1 text-sm text-gray-500">
+          {metrics
+            ? `${formatCycleDay(metrics.cycleStartDate)} – ${formatCycleDay(metrics.cycleEndDate)} cycle`
+            : 'Current calendar month'}
+        </p>
       </div>
 
       {error && (
@@ -258,60 +204,6 @@ export function BillingHub() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
-          <Receipt className="w-4 h-4 text-emerald-600" />
-          <h2 className="text-sm font-bold text-gray-900">Recent Direct Debit Activity</h2>
-        </div>
-        {recentTransactions.length === 0 ? (
-          <p className="px-5 py-8 text-sm text-gray-500">
-            No direct debit activity recorded yet this account.
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-gray-50 text-gray-500 uppercase tracking-wide">
-                <tr>
-                  <th className="px-5 py-2.5 font-semibold">Biller</th>
-                  <th className="px-5 py-2.5 font-semibold">Amount</th>
-                  <th className="px-5 py-2.5 font-semibold">Fee</th>
-                  <th className="px-5 py-2.5 font-semibold">Settlement</th>
-                  <th className="px-5 py-2.5 font-semibold">When</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentTransactions.map((tx) => (
-                  <tr key={tx.id} className="border-t border-gray-50">
-                    <td className="px-5 py-3 font-semibold text-gray-900">{tx.billerName}</td>
-                    <td className="px-5 py-3 font-mono">{formatAudCents(tx.amountCents)}</td>
-                    <td className="px-5 py-3">
-                      {tx.feeWaived ? (
-                        <span className="inline-flex items-center gap-1 text-emerald-700 font-semibold">
-                          <Sparkles className="w-3 h-3" /> Waived
-                        </span>
-                      ) : (
-                        <span className="text-gray-600">Metered</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3">
-                      {tx.status === 'SUCCESS' ? (
-                        <span className="inline-flex items-center gap-1 text-emerald-700">
-                          <CheckCircle2 className="w-3.5 h-3.5" /> Settled
-                        </span>
-                      ) : (
-                        <span className="text-rose-600">{tx.status}</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3 text-gray-500">
-                      {new Date(tx.createdAt).toLocaleString('en-AU')}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
     </div>
   )
 }

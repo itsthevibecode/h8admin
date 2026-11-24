@@ -8,8 +8,8 @@ import { Bell, CreditCard, LayoutDashboard, TrendingDown, Users } from 'lucide-r
 const TABS = [
   { label: 'Overview', href: '/', icon: LayoutDashboard },
   { label: 'Cards', href: '/cards', icon: CreditCard },
-  { label: 'Savings', href: '/savings', icon: TrendingDown },
-  { label: 'Household', href: '/household', icon: Users },
+  { label: 'Cheaper', href: '/savings', icon: TrendingDown },
+  { label: 'Household', href: '/direct-debits/household', icon: Users },
   { label: 'Alerts', href: '/notifications', icon: Bell },
 ] as const
 

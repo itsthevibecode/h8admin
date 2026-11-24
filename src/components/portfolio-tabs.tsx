@@ -69,7 +69,7 @@ export function PortfolioTabs({
   const getLabel = (acc: VirtualAccount) => {
     switch (acc.accountType) {
       case 'HOUSEHOLD':
-        return 'Joint Household'
+        return 'Household'
       case 'INVESTMENT':
         return `Investment Property (••${acc.accountNumber.slice(-4)})`
       default:
@@ -128,7 +128,7 @@ export function PortfolioTabs({
               onChange={(e) => setNewType(e.target.value as 'HOUSEHOLD' | 'INVESTMENT')}
               className="text-xs p-2 rounded-lg border border-gray-300 bg-white"
             >
-              <option value="HOUSEHOLD">Joint Household Portfolio</option>
+              <option value="HOUSEHOLD">Household</option>
               <option value="INVESTMENT">Investment Property Portfolio</option>
             </select>
             <button

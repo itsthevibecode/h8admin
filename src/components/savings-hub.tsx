@@ -99,7 +99,7 @@ export function SavingsHub() {
         </div>
         <div className="relative z-10 max-w-2xl space-y-3">
           <p className="text-xs uppercase tracking-wider text-emerald-300 font-semibold flex items-center gap-1.5">
-            <Sparkles className="w-4 h-4 text-emerald-400" /> Switch & Save
+            <Sparkles className="w-4 h-4 text-emerald-400" /> Find cheaper bills
           </p>
           {loading ? (
             <p className="text-sm text-emerald-100 flex items-center gap-2">
@@ -178,7 +178,7 @@ export function SavingsHub() {
                     rel="noreferrer"
                     className="mt-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition"
                   >
-                    Switch & Save via Partner
+                    Compare via partner
                     <ArrowUpRight className="w-3.5 h-3.5" />
                   </a>
                 </div>
@@ -253,9 +253,9 @@ export function SavingsHub() {
           financial situation or needs. Benchmarks are illustrative estimates based on standard
           Australian metropolitan retail medians and do not constitute personal advice under the
           Corporations Act 2001 (Cth). Consider the Product Disclosure Statement and your own
-          circumstances, or speak with a licensed adviser, before switching. Some “Switch & Save
-          via Partner” links may be affiliate referrals; H8Admin may receive a commission at no
-          extra cost to you.
+          circumstances, or speak with a licensed adviser, before switching. Some “Compare via
+          partner” links may be affiliate referrals; H8Admin may receive a commission at no extra
+          cost to you.
         </p>
       </div>
     </div>

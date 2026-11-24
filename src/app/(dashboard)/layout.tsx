@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { DashboardFrame } from '@/components/dashboard-frame'
 import { prisma } from '@/lib/prisma'
 import { legalName } from '@/lib/legal-name'
+import { investmentLabel } from '@/lib/billing-labels'
 import { hasVerifiedFactor } from '@/lib/session-mfa'
 
 export default async function DashboardLayout({
@@ -55,11 +56,36 @@ export default async function DashboardLayout({
     select: { firstName: true, lastName: true, isAdmin: true },
   })
 
+  const personal = await prisma.virtualAccount.findFirst({
+    where: { userId: user.id, accountType: 'INDIVIDUAL' },
+    orderBy: { createdAt: 'asc' },
+    select: { displayName: true },
+  })
+  const membership = await prisma.householdMember.findFirst({
+    where: { userId: user.id },
+    select: { household: { select: { name: true } } },
+    orderBy: { household: { createdAt: 'asc' } },
+  })
+  const investmentAccounts = await prisma.virtualAccount.findMany({
+    where: {
+      accountType: 'INVESTMENT',
+      OR: [{ userId: user.id }, { propertyMembers: { some: { userId: user.id } } }],
+    },
+    orderBy: { createdAt: 'asc' },
+    select: { id: true, displayName: true },
+  })
+
   return (
     <DashboardFrame
       email={user.email || ''}
       displayName={profile ? legalName(profile) ?? '' : ''}
       isAdmin={profile?.isAdmin ?? false}
+      personalLabel={personal?.displayName?.trim() || 'Personal'}
+      householdLabel={membership?.household.name?.trim() || 'Household'}
+      investments={investmentAccounts.map((account, index) => ({
+        id: account.id,
+        label: investmentLabel(account.displayName, index, investmentAccounts.length),
+      }))}
     >
       {children}
     </DashboardFrame>
